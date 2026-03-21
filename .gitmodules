@@ -1,0 +1,3 @@
+[submodule "rule_flow"]
+	path = rule_flow
+	url = https://github.com/stvangaal/rule_flow

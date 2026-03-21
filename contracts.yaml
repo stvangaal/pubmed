@@ -1,0 +1,18 @@
+# contracts.yaml — version pins for contract test enforcement
+#
+# This file maps each spec to the shared definition versions it depends on.
+# Contract tests read this file to verify version alignment.
+#
+# Must stay in sync with:
+#   1. Each spec's Requires/Provides tables (the human-readable pins)
+#   2. Each definition's ## Version header (the canonical version)
+#
+# Structure:
+#   specs:
+#     <spec-name>:           # Without .spec.md suffix
+#       requires:
+#         <definition-path>: <version>
+#       provides:            # Only for definitions this spec is primary implementor of
+#         <definition-path>: <version>
+
+specs: {}

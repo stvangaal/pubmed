@@ -1,0 +1,466 @@
+# Do not edit manually — regenerate with: bash scripts/generate-graph.sh
+---
+nodes:
+  - id: spec:consolidate-spec
+    type: spec
+    name: consolidate-spec
+    status: draft
+    path: docs/specs/consolidate-spec.spec.md
+  - id: spec:git-workflow-tooling
+    type: spec
+    name: git-workflow-tooling
+    status: draft
+    path: docs/specs/git-workflow-tooling.spec.md
+  - id: skill:architect
+    type: skill
+    layer: 0
+    stage: governance
+    description: "Interview the user to determine project shape, match to an architecture archetype, surface essential decisions, recommend spikes, and scaffold ARCHITECTURE.md and group documents. Standalone or called by /init-project."
+    path: .claude/skills/architect/SKILL.md
+  - id: skill:check-contracts
+    type: skill
+    layer: 2
+    stage: governance
+    description: Check version pin staleness — compares contracts.yaml against definition files and spec Requires/Provides tables. Use after editing definitions or specs.
+    path: .claude/skills/check-contracts/SKILL.md
+  - id: skill:check-register
+    type: skill
+    layer: 1
+    stage: governance
+    description: Audit file ownership — finds source files not listed in REGISTER.md and specs listed in the register whose files don't exist on disk. Use after adding new files or refactoring.
+    path: .claude/skills/check-register/SKILL.md
+  - id: skill:cleanup
+    type: skill
+    layer: 0
+    stage: cleanup
+    description: Post-merge cleanup — switch to main, pull latest, delete the merged feature branch, and verify spec status. Use after a PR has been merged.
+    path: .claude/skills/cleanup/SKILL.md
+  - id: skill:consolidate
+    type: skill
+    layer: 0
+    stage: design
+    description: Formalize your code into specs — scan branch changes, group by responsibility, generate governed specs
+    path: .claude/skills/consolidate/SKILL.md
+  - id: skill:design
+    type: skill
+    layer: 0
+    stage: design
+    description: Wrapper skill that orchestrates the design phase — runs external brainstorming to produce a design spec, then consolidates into a governed spec ready for implementation. Use at the start of planned work.
+    path: .claude/skills/design/SKILL.md
+  - id: skill:finish
+    type: skill
+    layer: 0
+    stage: finish
+    description: Complete implementation work — verify, promote spec to implemented, and create a pull request. Use when implementation is done and you're ready to ship.
+    path: .claude/skills/finish/SKILL.md
+  - id: skill:generate-register
+    type: skill
+    layer: 0
+    stage: governance
+    description: Auto-generate REGISTER.md from spec frontmatter. Shows diff before writing.
+    path: .claude/skills/generate-register/SKILL.md
+  - id: skill:generate-spec
+    type: skill
+    layer: 0
+    stage: design
+    description: Create governed specification, definition, or architecture documents following the spec-driven workflow. Use when you need a new spec, shared definition, reference document, or architecture doc.
+    path: .claude/skills/generate-spec/SKILL.md
+  - id: skill:health-check
+    type: skill
+    layer: 0
+    stage: governance
+    description: Run a full project health check — detects drift between register, contracts, definitions, and specs. Use when starting work, before committing, or when something feels off.
+    path: .claude/skills/health-check/SKILL.md
+  - id: skill:init-project
+    type: skill
+    layer: 0
+    stage: governance
+    description: Initialize a new project with spec-driven development infrastructure — creates directory structure, copies templates, sets up hooks. Use when starting a new project or adding spec governance to an existing one.
+    path: .claude/skills/init-project/SKILL.md
+  - id: skill:orient
+    type: skill
+    layer: 0
+    stage: start
+    description: Codebase orientation — given a change description, queries project-graph.yaml to show which specs, skills, and scripts are relevant and where gaps exist. Use at the start of new work or when unsure where a change fits.
+    path: .claude/skills/orient/SKILL.md
+  - id: skill:pr
+    type: skill
+    layer: 0
+    stage: finish
+    description: Create a pull request with spec-aware body, health-check summary, and security review suggestion. Use when ready to open a PR for the current branch.
+    path: .claude/skills/pr/SKILL.md
+  - id: skill:promote-spec
+    type: skill
+    layer: 0
+    stage: finish
+    description: Advance a specification through the status state machine (draft → ready → in-progress → implemented). Runs validation gates at each transition.
+    path: .claude/skills/promote-spec/SKILL.md
+  - id: skill:reflect
+    type: skill
+    layer: 0
+    stage: unknown
+    description: "Lightweight learning interview at natural stopping points — post-merge, post-spike, or post-incident. Captures lessons while context is fresh. Suggested by /cleanup but never bundled into it."
+    path: .claude/skills/reflect/SKILL.md
+  - id: skill:security-review
+    type: skill
+    layer: 2
+    stage: finish
+    description: Analyze AI-facing code for prompt injection and instruction hijacking risks. Use before PRs that modify hooks, skills, scripts, or agent instruction files.
+    path: .claude/skills/security-review/SKILL.md
+  - id: skill:spec-status
+    type: skill
+    layer: 1
+    stage: governance
+    description: Show a dashboard of all specification statuses, ownership, and dependencies. Use to understand project state at a glance.
+    path: .claude/skills/spec-status/SKILL.md
+  - id: skill:start
+    type: skill
+    layer: 0
+    stage: start
+    description: Entry point for new work — ensures a GitHub issue exists, determines whether the change is planned or exploratory, and routes to the appropriate workflow path. Auto-invoked by CLAUDE.md when a change request is detected.
+    path: .claude/skills/start/SKILL.md
+  - id: skill:sync-contracts
+    type: skill
+    layer: 2
+    stage: governance
+    description: Regenerate contracts.yaml from spec Requires/Provides tables. Use after editing spec dependencies. Shows a dry-run diff first for approval.
+    path: .claude/skills/sync-contracts/SKILL.md
+  - id: skill:validate-refs
+    type: skill
+    layer: 2
+    stage: governance
+    description: Validate cross-references between specs, definitions, register, and contracts.yaml. Catches broken references, missing files, and notation inconsistencies.
+    path: .claude/skills/validate-refs/SKILL.md
+  - id: script:bootstrap-project
+    type: script
+    path: scripts/bootstrap-project.sh
+  - id: script:file-v2-issues
+    type: script
+    path: scripts/file-v2-issues.sh
+  - id: script:generate-graph
+    type: script
+    path: scripts/generate-graph.sh
+  - id: script:generate-register
+    type: script
+    path: scripts/generate-register.sh
+  - id: script:health-check
+    type: script
+    path: scripts/health-check.sh
+  - id: script:parse-frontmatter
+    type: script
+    path: scripts/parse-frontmatter.sh
+  - id: script:sync-contracts
+    type: script
+    path: scripts/sync-contracts.sh
+  - id: script:validate-cross-refs
+    type: script
+    path: scripts/validate-cross-refs.sh
+  - id: hook:post-commit-check
+    type: hook
+    trigger: PostToolUse
+    path: .claude/hooks/post-commit-check.sh
+  - id: hook:pre-commit-branch-check
+    type: hook
+    trigger: PreToolUse
+    path: .claude/hooks/pre-commit-branch-check.sh
+  - id: hook:pre-implementation-check
+    type: hook
+    trigger: PreToolUse
+    path: .claude/hooks/pre-implementation-check.sh
+  - id: hook:session-start
+    type: hook
+    trigger: SessionStart
+    path: .claude/hooks/session-start.sh
+  - id: doc:spec-workflow
+    type: document
+    path: SPEC-WORKFLOW.md
+  - id: doc:register
+    type: document
+    path: docs/REGISTER.md
+  - id: doc:architecture
+    type: document
+    path: docs/ARCHITECTURE.md
+  - id: doc:contracts
+    type: document
+    path: contracts.yaml
+edges:
+  - from: spec:consolidate-spec
+    to: "file:.claude/skills/consolidate/SKILL.md"
+    rel: owns
+  - from: spec:git-workflow-tooling
+    to: "file:.githooks/pre-commit"
+    rel: owns
+  - from: spec:git-workflow-tooling
+    to: "file:.claude/hooks/pre-commit-branch-check.sh"
+    rel: owns
+  - from: spec:git-workflow-tooling
+    to: "file:.claude/skills/pr/SKILL.md"
+    rel: owns
+  - from: spec:git-workflow-tooling
+    to: "file:.claude/skills/security-review/SKILL.md"
+    rel: owns
+  - from: spec:git-workflow-tooling
+    to: "file:scripts/bootstrap-project.sh"
+    rel: owns
+  - from: skill:architect
+    to: skill:init-project
+    rel: calls
+  - from: skill:check-contracts
+    to: skill:health-check
+    rel: calls
+  - from: skill:check-contracts
+    to: script:health-check
+    rel: runs
+  - from: skill:check-contracts
+    to: script:validate-cross-refs
+    rel: runs
+  - from: skill:check-contracts
+    to: skill:sync-contracts
+    rel: calls
+  - from: skill:check-contracts
+    to: script:sync-contracts
+    rel: runs
+  - from: skill:check-register
+    to: skill:health-check
+    rel: calls
+  - from: skill:check-register
+    to: script:health-check
+    rel: runs
+  - from: skill:check-register
+    to: skill:generate-spec
+    rel: suggests
+  - from: skill:cleanup
+    to: skill:finish
+    rel: calls
+  - from: skill:cleanup
+    to: skill:reflect
+    rel: calls
+  - from: skill:consolidate
+    to: skill:orient
+    rel: calls
+  - from: skill:consolidate
+    to: skill:pr
+    rel: calls
+  - from: skill:consolidate
+    to: skill:promote-spec
+    rel: calls
+  - from: skill:consolidate
+    to: skill:health-check
+    rel: calls
+  - from: skill:design
+    to: skill:start
+    rel: calls
+  - from: skill:design
+    to: skill:orient
+    rel: calls
+  - from: skill:design
+    to: skill:consolidate
+    rel: calls
+  - from: skill:design
+    to: skill:generate-spec
+    rel: suggests
+  - from: skill:finish
+    to: skill:health-check
+    rel: calls
+  - from: skill:finish
+    to: script:health-check
+    rel: runs
+  - from: skill:finish
+    to: skill:pr
+    rel: calls
+  - from: skill:finish
+    to: skill:promote-spec
+    rel: calls
+  - from: skill:finish
+    to: skill:security-review
+    rel: suggests
+  - from: skill:finish
+    to: skill:cleanup
+    rel: calls
+  - from: skill:finish
+    to: skill:security-review
+    rel: calls
+  - from: skill:generate-register
+    to: script:generate-register
+    rel: runs
+  - from: skill:health-check
+    to: script:health-check
+    rel: runs
+  - from: skill:health-check
+    to: skill:sync-contracts
+    rel: suggests
+  - from: skill:init-project
+    to: script:bootstrap-project
+    rel: runs
+  - from: skill:init-project
+    to: skill:architect
+    rel: calls
+  - from: skill:init-project
+    to: skill:generate-spec
+    rel: calls
+  - from: skill:init-project
+    to: skill:generate-spec
+    rel: suggests
+  - from: skill:init-project
+    to: skill:health-check
+    rel: calls
+  - from: skill:init-project
+    to: script:health-check
+    rel: runs
+  - from: skill:orient
+    to: skill:start
+    rel: calls
+  - from: skill:orient
+    to: skill:design
+    rel: calls
+  - from: skill:orient
+    to: skill:consolidate
+    rel: calls
+  - from: skill:orient
+    to: script:generate-graph
+    rel: runs
+  - from: skill:orient
+    to: skill:health-check
+    rel: calls
+  - from: skill:orient
+    to: script:health-check
+    rel: runs
+  - from: skill:orient
+    to: skill:validate-refs
+    rel: calls
+  - from: skill:pr
+    to: skill:health-check
+    rel: calls
+  - from: skill:pr
+    to: script:health-check
+    rel: runs
+  - from: skill:pr
+    to: skill:security-review
+    rel: calls
+  - from: skill:promote-spec
+    to: skill:health-check
+    rel: calls
+  - from: skill:promote-spec
+    to: script:health-check
+    rel: runs
+  - from: skill:promote-spec
+    to: skill:pr
+    rel: calls
+  - from: skill:reflect
+    to: skill:cleanup
+    rel: suggests
+  - from: skill:reflect
+    to: skill:cleanup
+    rel: calls
+  - from: skill:start
+    to: skill:orient
+    rel: calls
+  - from: skill:start
+    to: skill:consolidate
+    rel: suggests
+  - from: skill:start
+    to: skill:init-project
+    rel: calls
+  - from: skill:sync-contracts
+    to: script:sync-contracts
+    rel: runs
+  - from: skill:sync-contracts
+    to: skill:check-contracts
+    rel: suggests
+  - from: skill:validate-refs
+    to: script:validate-cross-refs
+    rel: runs
+  - from: skill:validate-refs
+    to: skill:sync-contracts
+    rel: suggests
+  - from: skill:validate-refs
+    to: skill:generate-spec
+    rel: suggests
+  - from: spec:consolidate-spec
+    to: "doc:spec-minimal"
+    rel: requires
+  - from: spec:consolidate-spec
+    to: "doc:spec-full"
+    rel: requires
+  - from: spec:consolidate-spec
+    to: "doc:register"
+    rel: requires
+  - from: spec:consolidate-spec
+    to: "doc:spec-workflow"
+    rel: requires
+  - from: spec:git-workflow-tooling
+    to: "doc:spec-workflow"
+    rel: requires
+  - from: spec:git-workflow-tooling
+    to: "doc:register"
+    rel: requires
+  - from: spec:git-workflow-tooling
+    to: "doc:bootstrap-project"
+    rel: requires
+  - from: spec:consolidate-spec
+    to: skill:consolidate
+    rel: provides
+  - from: spec:git-workflow-tooling
+    to: skill:pr
+    rel: provides
+  - from: spec:git-workflow-tooling
+    to: skill:security-review
+    rel: provides
+  - from: skill:architect
+    to: stage:governance
+    rel: belongs-to-stage
+  - from: skill:check-contracts
+    to: stage:governance
+    rel: belongs-to-stage
+  - from: skill:check-register
+    to: stage:governance
+    rel: belongs-to-stage
+  - from: skill:cleanup
+    to: stage:cleanup
+    rel: belongs-to-stage
+  - from: skill:consolidate
+    to: stage:design
+    rel: belongs-to-stage
+  - from: skill:design
+    to: stage:design
+    rel: belongs-to-stage
+  - from: skill:finish
+    to: stage:finish
+    rel: belongs-to-stage
+  - from: skill:generate-register
+    to: stage:governance
+    rel: belongs-to-stage
+  - from: skill:generate-spec
+    to: stage:design
+    rel: belongs-to-stage
+  - from: skill:health-check
+    to: stage:governance
+    rel: belongs-to-stage
+  - from: skill:init-project
+    to: stage:governance
+    rel: belongs-to-stage
+  - from: skill:orient
+    to: stage:start
+    rel: belongs-to-stage
+  - from: skill:pr
+    to: stage:finish
+    rel: belongs-to-stage
+  - from: skill:promote-spec
+    to: stage:finish
+    rel: belongs-to-stage
+  - from: skill:security-review
+    to: stage:finish
+    rel: belongs-to-stage
+  - from: skill:spec-status
+    to: stage:governance
+    rel: belongs-to-stage
+  - from: skill:start
+    to: stage:start
+    rel: belongs-to-stage
+  - from: skill:sync-contracts
+    to: stage:governance
+    rel: belongs-to-stage
+  - from: skill:validate-refs
+    to: stage:governance
+    rel: belongs-to-stage
+

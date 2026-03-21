@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# pre-commit hook — scan staged files for secrets before allowing commit.
+#
+# Checks for: API keys, tokens, passwords, private keys, .env files.
+# Blocking: exits 1 if any match is found.
+# Bypass: git commit --no-verify
+#
+# Install with: git config core.hooksPath .githooks
+
+set -euo pipefail
+
+# ── Patterns ─────────────────────────────────────────────────────────
+
+# Each pattern is "label:::regex" — label is shown on match
+PATTERNS=(
+  "API key (sk-):::sk-[a-zA-Z0-9]{20,}"
+  "GitHub token:::ghp_[a-zA-Z0-9]{36,}"
+  "GitLab token:::glpat-[a-zA-Z0-9]{20,}"
+  "AWS key ID:::AKIA[A-Z0-9]{16}"
+  "AWS secret:::AWS_SECRET[_A-Z]*[=:][[:space:]]*['\"]?[A-Za-z0-9/+=]{20,}"
+  "Token assignment:::token[[:space:]]*=[[:space:]]*['\"][^'\"]{8,}"
+  "Bearer token:::[Bb]earer[[:space:]]+[A-Za-z0-9._~+/=-]{20,}"
+  "Authorization header:::authorization:[[:space:]]*['\"]?[A-Za-z0-9._~+/=-]{20,}"
+  "Password assignment:::passw(or)?d[[:space:]]*=[[:space:]]*['\"][^'\"]{4,}"
+  "Secret assignment:::secret[[:space:]]*=[[:space:]]*['\"][^'\"]{4,}"
+  "Private key assignment:::PRIVATE_KEY[[:space:]]*=[[:space:]]*['\"]"
+  "Private key file:::-----BEGIN[[:space:]]+(RSA|OPENSSH|EC|PGP|CERTIFICATE)[[:space:]]+PRIVATE[[:space:]]+KEY-----"
+)
+
+# ── Get staged files ─────────────────────────────────────────────────
+
+staged_files=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null || true)
+[ -z "$staged_files" ] && exit 0
+
+# ── Check for .env files ─────────────────────────────────────────────
+
+found=false
+
+while IFS= read -r file; do
+  basename_file="$(basename "$file")"
+  case "$basename_file" in
+    .env|.env.*|*.env)
+      echo "BLOCKED: Sensitive file staged: $file"
+      echo "  Pattern: .env file (blocked by filename)"
+      echo ""
+      found=true
+      ;;
+  esac
+done <<< "$staged_files"
+
+# ── Scan file contents ───────────────────────────────────────────────
+
+while IFS= read -r file; do
+  # Skip binary files
+  if file --mime-encoding "$file" 2>/dev/null | grep -q 'binary'; then
+    continue
+  fi
+
+  # Skip files that don't exist (deleted in staging)
+  [ ! -f "$file" ] && continue
+
+  # Get staged content (not working tree content)
+  staged_content=$(git show ":$file" 2>/dev/null || true)
+  [ -z "$staged_content" ] && continue
+
+  for entry in "${PATTERNS[@]}"; do
+    label="${entry%%:::*}"
+    pattern="${entry##*:::}"
+
+    matches=$(echo "$staged_content" | grep -nE "$pattern" 2>/dev/null || true)
+    if [ -n "$matches" ]; then
+      while IFS= read -r match; do
+        line_num="${match%%:*}"
+        echo "BLOCKED: $file:$line_num — $label"
+        echo "  $match"
+        echo ""
+        found=true
+      done <<< "$matches"
+    fi
+  done
+done <<< "$staged_files"
+
+# ── Result ───────────────────────────────────────────────────────────
+
+if [ "$found" = true ]; then
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "Commit blocked: potential secrets detected in staged files."
+  echo "Review the matches above. If they are false positives, bypass with:"
+  echo "  git commit --no-verify"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  exit 1
+fi
+
+exit 0

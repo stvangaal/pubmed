@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# post-commit hook — run cross-ref validation when doc files are modified
+#
+# Light-touch: only runs validate-cross-refs.sh, not full health-check.
+# Advisory only — does not block the commit.
+#
+# Install with: git config core.hooksPath .githooks
+
+set -euo pipefail
+
+# Check if any doc files were modified in this commit
+doc_files=$(git diff-tree --no-commit-id --name-only -r HEAD -- \
+  docs/ contracts.yaml SPEC-WORKFLOW.md 2>/dev/null || true)
+
+if [ -z "$doc_files" ]; then
+  exit 0
+fi
+
+echo ""
+echo "[post-commit] Doc files modified — running cross-reference validation..."
+echo ""
+
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)/scripts"
+
+if [ -x "$SCRIPT_DIR/validate-cross-refs.sh" ]; then
+  "$SCRIPT_DIR/validate-cross-refs.sh" "$(git rev-parse --show-toplevel)" || {
+    echo ""
+    echo "[post-commit] Cross-reference issues detected. Please review above."
+    echo ""
+  }
+else
+  echo "[post-commit] validate-cross-refs.sh not found — skipping."
+fi
