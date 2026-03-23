@@ -1,0 +1,19 @@
+# owner: llm-summarize
+# Default configuration for the LLM summarization stage.
+
+prompt_template_file: config/prompts/summary-prompt.md
+model: claude-sonnet-4-6
+max_tokens: 500
+
+subdomain_options:
+  - Acute Treatment
+  - Prevention
+  - Rehabilitation
+  - Hospital Care
+  - Imaging
+  - Epidemiology
+
+# Google Form (or similar) for per-article clinician feedback.
+# The feedback URL is constructed as: {feedback_form_url}?{feedback_pmid_field}={pmid}
+feedback_form_url: "https://forms.example.com/feedback"
+feedback_pmid_field: "pmid"
