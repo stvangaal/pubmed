@@ -47,6 +47,7 @@ class LiteratureSummary:
     design: str
     primary_outcome: str
     limitations: str
+    summary_short: str
     triage_score: float
     triage_rationale: str
     feedback_url: str
@@ -156,4 +157,38 @@ class DistributeConfig:
     opening: str = ""
     closing: str = ""
     sort_by: str = "triage_score"
+    full_summary_threshold: float = 0.80
     output: OutputConfig = field(default_factory=OutputConfig)
+
+
+@dataclass
+class BlogTemplatesConfig:
+    """See docs/definitions/blog-config.md (templates section)."""
+
+    post: str = "config/templates/blog-post.md"
+    index: str = "config/templates/blog-index.md"
+
+
+@dataclass
+class BlogConfig:
+    """See docs/definitions/blog-config.md."""
+
+    site_title: str = "Stroke Literature Weekly"
+    site_description: str = ""
+    base_url: str = ""
+    publish: bool = True
+    branch: str = "gh-pages"
+    digests_dir: str = "digests"
+    closing: str = ""
+    templates: BlogTemplatesConfig = field(default_factory=BlogTemplatesConfig)
+
+
+@dataclass
+class BlogPage:
+    """See docs/definitions/blog-page.md."""
+
+    run_date: str
+    page_url: str
+    article_urls: dict[str, str]  # PMID → anchor URL
+    markdown: str
+    published: bool

@@ -25,7 +25,7 @@ ready
 Phase 2
 
 ## Purpose
-Assemble literature summaries into a formatted digest ready to paste into an email. Produces both markdown (for rich email clients) and plain-text (for simple pasting) versions. This is the pipeline's final output in v1 — automated sending is deferred.
+Assemble literature summaries into a formatted email digest ready to paste. Produces both markdown (for rich email clients) and plain-text (for simple pasting) versions. Uses tiered rendering: articles scoring at or above `full_summary_threshold` get the full summary; articles below it get the LLM-authored 2-sentence teaser with a link to the full version on the blog.
 
 ## Requires (Inbound Contracts)
 
@@ -44,7 +44,7 @@ Assemble literature summaries into a formatted digest ready to paste into an ema
 ## Behaviour
 
 ### Input
-A list of `LiteratureSummary` objects and a `DistributeConfig`.
+A list of `LiteratureSummary` objects, a `DistributeConfig`, and optionally a `BlogPage` (providing blog URLs for "read more" links).
 
 ### Assembly
 
@@ -63,9 +63,11 @@ Sort summaries according to `sort_by`:
 - `subdomain` — grouped by subdomain (Acute Treatment, Prevention, Rehabilitation, etc.), then by score within each group
 - `pub_date` — most recent first
 
-For each summary, render in the hybrid format:
+For each summary, select the rendering tier based on `triage_score` vs `full_summary_threshold` (default: 0.80, configurable in `distribute-config.yaml`):
 
-**Markdown version:**
+**Full summary** (triage_score >= full_summary_threshold):
+
+Markdown:
 ```
 **{subdomain}**
 {citation}
@@ -84,7 +86,7 @@ For each summary, render in the hybrid format:
 ---
 ```
 
-**Plain-text version:**
+Plain-text:
 ```
 [{subdomain}]
 {title}. {journal}. PMID {pmid} (https://pubmed.ncbi.nlm.nih.gov/{pmid}/)
@@ -102,6 +104,35 @@ Feedback: {feedback_url}
 
 ---
 ```
+
+**Short summary** (triage_score < full_summary_threshold):
+
+Markdown:
+```
+**{subdomain}**
+{citation}
+
+{summary_short}
+
+[Read full summary]({blog_article_url}) · [Feedback]({feedback_url})
+
+---
+```
+
+Plain-text:
+```
+[{subdomain}]
+{title}. {journal}. PMID {pmid} (https://pubmed.ncbi.nlm.nih.gov/{pmid}/)
+
+{summary_short}
+
+Full summary: {blog_article_url}
+Feedback: {feedback_url}
+
+---
+```
+
+If no `BlogPage` is available (blog publishing disabled or failed), the "Read full summary" link falls back to the PubMed URL.
 
 #### 3. Closing
 
@@ -133,6 +164,8 @@ If the summary list is empty (e.g., quiet week or all articles failed summarizat
 | DB2 | Both markdown and plain-text output | Markdown only; HTML | Some email clients strip markdown. Plain text ensures the content is usable everywhere. HTML adds templating complexity with no value in v1. | 2026-03-23 |
 | DB3 | Configurable sort order | Fixed by score; fixed by subdomain | Different audiences may prefer different ordering. Score-first is the sensible default (most important articles first), but subdomain grouping is useful for teams with subspecialty interests. | 2026-03-23 |
 | DB4 | Print to stdout in addition to file | File only; clipboard | Stdout makes the digest visible in the GitHub Actions run log and in local terminal runs. Clipboard is platform-dependent. | 2026-03-23 |
+| DB5 | Tiered rendering: full vs short summary based on triage_score | All full; all short; reader's choice | Keeps the email scannable — high-relevance articles get full detail, lower-relevance get a teaser with a link to the blog for the full version. The threshold (default 0.80) is configurable. | 2026-03-23 |
+| DB6 | Short summary links to blog page, falls back to PubMed URL | Always PubMed; omit link | Blog page has the full summary with context. PubMed fallback ensures the link is always useful even if blog publishing is disabled. | 2026-03-23 |
 
 ## Tests
 
@@ -146,6 +179,11 @@ If the summary list is empty (e.g., quiet week or all articles failed summarizat
 - **test_feedback_url_included**: Verify each article section includes the feedback URL.
 - **test_empty_digest**: Given an empty summary list, verify the output includes the "no articles" message with opening and closing.
 - **test_closing_appended**: Verify the closing text appears at the end of the digest.
+- **test_full_summary_above_threshold**: Given a summary with triage_score >= 0.80, verify the full format is rendered (research question, details, limitations).
+- **test_short_summary_below_threshold**: Given a summary with triage_score < 0.80, verify the short format is rendered (summary_short + blog link).
+- **test_short_summary_blog_link**: Verify the short summary includes a link to the blog article anchor URL when a BlogPage is provided.
+- **test_short_summary_fallback_no_blog**: When no BlogPage is provided, verify the short summary links to the PubMed URL instead.
+- **test_mixed_tier_digest**: Given summaries with scores above and below threshold, verify the digest renders the correct format for each.
 
 ### Contract Tests
 

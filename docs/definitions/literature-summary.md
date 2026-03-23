@@ -7,7 +7,7 @@ draft
 v0
 
 ## Description
-The output of the summarization stage. One literature summary per filtered PubMed record, containing the LLM-generated clinical summary in the hybrid format and a per-article feedback link. Consumed by the distribute stage to assemble the email digest.
+The output of the summarization stage. One literature summary per filtered PubMed record, containing both a full LLM-generated clinical summary (hybrid format) and a 2-sentence short summary (teaser). The blog page uses the full summary for all articles. The email digest uses the full summary for high-scoring articles and the short summary (with a blog link) for the rest. Also includes a per-article feedback link.
 
 ## Schema
 
@@ -26,6 +26,7 @@ class LiteratureSummary:
     primary_outcome: str         # Result with numbers
     limitations: str             # Most important methodological caveat
     triage_score: float          # LLM triage relevance score from filter stage (0.0-1.0)
+    summary_short: str           # 2-sentence teaser: research question + key finding
     triage_rationale: str        # LLM triage explanation from filter stage
     feedback_url: str            # Google Form URL with pre-filled PMID
     raw_llm_response: str        # Full LLM output (for debugging/auditing)
@@ -38,6 +39,7 @@ class LiteratureSummary:
 - `citation` must include a hyperlink to `https://pubmed.ncbi.nlm.nih.gov/{pmid}/`
 - `feedback_url` must include the PMID as a pre-filled form parameter
 - `research_question` and `key_finding` must each be a single sentence
+- `summary_short` must be exactly 2 sentences: the research question and the key finding, suitable as a standalone teaser in the email digest
 - `triage_score` and `triage_rationale` are carried forward from the `PubmedRecord@filtered` source — they reflect why the filter stage selected this article
 - `raw_llm_response` preserves the unprocessed LLM output for quality auditing
 
@@ -48,3 +50,4 @@ class LiteratureSummary:
 | 2026-03-23 | v0 | Initial draft from architecture spike | — |
 | 2026-03-23 | v0 | Added triage_score and triage_rationale fields from filter spike | llm-summarize |
 | 2026-03-23 | v0 | Added title, journal, pub_date fields for plain-text rendering and sorting | llm-summarize, digest-build |
+| 2026-03-23 | v0 | Added summary_short field (2-sentence teaser) for tiered email digest rendering | llm-summarize, digest-build, blog-publish |

@@ -33,6 +33,12 @@ closing: |
 # How to order articles in the digest
 sort_by: triage_score  # triage_score (default) | subdomain | pub_date
 
+# Triage score threshold for full vs short summary in the email digest.
+# Articles scoring >= this value get the full summary.
+# Articles below this (but above the triage inclusion threshold) get a
+# 2-sentence teaser with a link to the full version on the blog.
+full_summary_threshold: 0.80
+
 # Output settings
 output:
   # Where to write the digest text
@@ -55,6 +61,7 @@ class DistributeConfig:
     opening: str                 # Opening text template with {date_range}, {article_count} placeholders
     closing: str                 # Closing text
     sort_by: str                 # Article sort order: "triage_score" | "subdomain" | "pub_date"
+    full_summary_threshold: float  # Score cutoff for full vs short summary in email (default: 0.80)
     output: OutputConfig
 ```
 
@@ -63,6 +70,7 @@ class DistributeConfig:
 - `opening` may contain `{date_range}` and `{article_count}` placeholders — both are optional
 - `closing` is plain text, no placeholders
 - `sort_by` must be one of: `"triage_score"`, `"subdomain"`, `"pub_date"`
+- `full_summary_threshold` must be between 0.0 and 1.0, and should be >= the triage inclusion threshold from `filter-config`
 - `output.file` parent directory must exist or be creatable
 
 ## Changelog
@@ -70,3 +78,4 @@ class DistributeConfig:
 | Date | Version | Change | Affected Specs |
 |------|---------|--------|----------------|
 | 2026-03-23 | v0 | Initial draft | — |
+| 2026-03-23 | v0 | Added full_summary_threshold for tiered email rendering | digest-build |

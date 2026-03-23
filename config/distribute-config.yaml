@@ -14,6 +14,12 @@ closing: >-
 
 sort_by: triage_score
 
+# Triage score threshold for full vs short summary in the email digest.
+# Articles scoring >= this value get the full summary in the email.
+# Articles below this get a 2-sentence teaser with a link to the blog.
+# (All articles get the full summary on the blog page regardless.)
+full_summary_threshold: 0.80
+
 output:
   file: output/digest.md
   plain_text: true

@@ -64,13 +64,15 @@ For each filtered record:
    - `primary_outcome` — text after "- Primary outcome:"
    - `limitations` — text after "- Limitations:"
 
-4. **Generate feedback URL.** Construct `{feedback_form_url}?{feedback_pmid_field}={pmid}` from the config and record.
+4. **Parse the short summary.** Extract `summary_short` — text after "**Short Summary:**". This is a 2-sentence teaser produced by the LLM in the same call as the full summary. It is used by the email digest for articles below the `full_summary_threshold`.
 
-5. **Carry forward source data.** Copy from the source `PubmedRecord` into the `LiteratureSummary`:
+5. **Generate feedback URL.** Construct `{feedback_form_url}?{feedback_pmid_field}={pmid}` from the config and record.
+
+6. **Carry forward source data.** Copy from the source `PubmedRecord` into the `LiteratureSummary`:
    - `title`, `journal`, `pub_date` — for plain-text rendering and sorting
    - `triage_score`, `triage_rationale` — for digest ordering and auditing
 
-6. **Assemble the `LiteratureSummary`.** Populate all fields. Retain `raw_llm_response` for auditing.
+7. **Assemble the `LiteratureSummary`.** Populate all fields including `summary_short`. Retain `raw_llm_response` for auditing.
 
 ### Error handling
 - If the LLM call fails, retry once. If it fails again, log the error and skip the article (do not block the rest of the digest).
@@ -88,6 +90,7 @@ A list of `LiteratureSummary` objects, one per successfully summarized article.
 | LS2 | Parse structured fields from markdown output | Request JSON output from LLM | Markdown output is human-readable for debugging and auditing. JSON parsing adds fragility with no benefit at this volume. The hybrid format has clear delimiters. | 2026-03-23 |
 | LS3 | Skip articles on parse failure rather than halt | Halt pipeline on any failure | A digest with 4 of 5 articles is better than no digest. Failures are logged for investigation. | 2026-03-23 |
 | LS4 | Store raw LLM response alongside parsed fields | Discard raw response after parsing | Raw response enables quality auditing and prompt iteration without re-running the pipeline. Storage cost is trivial. | 2026-03-23 |
+| LS5 | Generate summary_short in the same LLM call as the full summary | Separate LLM call; derive by concatenating parsed fields | Single call keeps cost flat. LLM-authored teaser reads more naturally than mechanical concatenation of research_question + key_finding. Cost is ~20 extra tokens/article. | 2026-03-23 |
 
 ## Tests
 
@@ -99,6 +102,7 @@ A list of `LiteratureSummary` objects, one per successfully summarized article.
 - **test_subdomain_validation**: Verify that an unrecognized subdomain tag is caught and handled (logged, article skipped or closest match used).
 - **test_feedback_url_construction**: Verify the feedback URL is correctly constructed with pre-filled PMID from config values.
 - **test_citation_format**: Verify the citation includes title, journal in italics, and a valid PubMed hyperlink.
+- **test_summary_short_parsed**: Verify `summary_short` is extracted from the LLM response's "**Short Summary:**" section and contains exactly 2 sentences.
 
 ### Contract Tests
 
