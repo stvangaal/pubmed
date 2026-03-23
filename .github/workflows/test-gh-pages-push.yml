@@ -1,0 +1,33 @@
+name: Test gh-pages push
+
+on:
+  workflow_dispatch:  # manual trigger only
+
+permissions:
+  contents: write
+
+jobs:
+  test-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Push test file to gh-pages
+        run: |
+          git checkout gh-pages
+          echo "Pushed from GitHub Actions at $(date -u)" > _actions-test.txt
+          git add _actions-test.txt
+          git commit -m "Test: push from GitHub Actions"
+          git push origin gh-pages
+
+      - name: Switch back and confirm
+        run: |
+          git checkout main
+          echo "Successfully pushed to gh-pages from Actions"
