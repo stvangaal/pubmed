@@ -126,9 +126,9 @@ A weekly automated pipeline that identifies practice-changing stroke publication
 
 ## Scope Fence (v1)
 
-**In scope:** PubMed abstract-only pipeline, GitHub Actions scheduling, single recipient (comms person), YAML configuration, Google Form feedback, public repo.
+**In scope:** PubMed abstract-only pipeline, GitHub Actions scheduling, GitHub Pages blog archive, single recipient (comms person), YAML configuration, Google Form feedback, public repo.
 
-**Out of scope:** Web UI, historical backfill, full-text PDF analysis, direct mass email, multi-user accounts.
+**Out of scope:** Interactive web UI, historical backfill, full-text PDF analysis, direct mass email, multi-user accounts.
 
 ## Decisions and Rationale
 

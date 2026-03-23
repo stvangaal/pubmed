@@ -1,11 +1,11 @@
 ---
 layout: default
-title: "{title} — {date_range}"
+title: "{site_title} — {date_range}"
 date: {run_date}
 article_count: {article_count}
 ---
 
-# {title} — {date_range}
+# {site_title} — {date_range}
 
 {article_count} articles identified this week.
 

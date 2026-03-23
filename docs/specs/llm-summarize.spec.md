@@ -121,6 +121,13 @@ A list of `LiteratureSummary` objects, one per successfully summarized article.
 - Integration tests make real API calls; unit and contract tests are fully local
 - Python 3.11+ with `anthropic` package
 
+## Implementation Updates Required (Phase 3)
+
+The Phase 3 tiered-summary work added `summary_short` to the LLM output. The existing implementation requires updates:
+
+- <!-- TODO:IMPL --> Add `summary_short` extraction to `parse_summary.py` — parse text after `**Short Summary:**` marker
+- <!-- TODO:IMPL --> Populate `summary_short` field in `_summarize_one()` in `llm_summarize.py`
+
 ## Implementation Notes
 
 - The prompt template validated in the spike is stored in `config/summary-config.yaml` as the default. Users can modify it without touching code.

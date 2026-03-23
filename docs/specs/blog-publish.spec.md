@@ -55,15 +55,15 @@ A list of `LiteratureSummary` objects, a `BlogConfig`, a `date_range` string, an
 Render the digest as a Jekyll markdown file using the **user-editable template** at `config/templates/blog-post.md`. The template uses the same `{placeholder}` convention as the email digest.
 
 Available placeholders:
-- `{title}` — from `blog-config.yaml` `site_title`
+- `{site_title}` — from `blog-config.yaml` `site_title`
 - `{date_range}` — human-readable date window
 - `{run_date}` — ISO date for the run
 - `{article_count}` — number of summaries
 - `{articles}` — rendered article blocks (see below)
 - `{closing}` — closing text from config
 
-Each article is rendered with a per-article anchor (`<a id="pmid-{pmid}"></a>`) so individual articles are linkable from the email digest. The article rendering format is defined inline in the template using a `{%- for article in articles %}` / `{%- endfor %}` block — **not** Jinja, but a simple repeated section delimited by `<!-- BEGIN ARTICLE -->` and `<!-- END ARTICLE -->` markers. Within the article block, per-article placeholders are available:
-- `{pmid}`, `{subdomain}`, `{citation}`, `{research_question}`, `{key_finding}`, `{design}`, `{primary_outcome}`, `{limitations}`, `{feedback_url}`, `{title}`, `{journal}`, `{pub_date}`
+Each article is rendered with a per-article anchor (`<a id="pmid-{pmid}"></a>`) so individual articles are linkable from the email digest. The article rendering format is defined inline in the template as a repeated section delimited by `<!-- BEGIN ARTICLE -->` and `<!-- END ARTICLE -->` markers. The template engine extracts this block, renders it once per article with per-article placeholder substitution, and joins the results. Within the article block, these per-article placeholders are available:
+- `{pmid}`, `{subdomain}`, `{citation}`, `{research_question}`, `{key_finding}`, `{design}`, `{primary_outcome}`, `{limitations}`, `{summary_short}`, `{feedback_url}`, `{title}`, `{journal}`, `{pub_date}`
 
 #### Index Page
 
@@ -165,6 +165,13 @@ These are **not in scope** for the initial implementation but are natural extens
 ### Integration Tests
 
 - **test_worktree_publish**: In a test repo with a `gh-pages` branch, verify that `publish_to_gh_pages()` creates the correct commit with the expected files. (Uses a temporary git repo, not the real remote.)
+
+## Implementation Updates Required
+
+These infrastructure changes are needed to support blog-publish:
+
+- <!-- TODO:IMPL --> Add `load_blog_config()` to `config.py` — load YAML and instantiate `BlogConfig` / `BlogTemplatesConfig`
+- <!-- TODO:IMPL --> Update `pipeline.py` to call blog-publish before digest-build and pass `BlogPage` to `build_digest()`
 
 ## Implementation Notes
 

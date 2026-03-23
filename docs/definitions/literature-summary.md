@@ -39,7 +39,7 @@ class LiteratureSummary:
 - `citation` must include a hyperlink to `https://pubmed.ncbi.nlm.nih.gov/{pmid}/`
 - `feedback_url` must include the PMID as a pre-filled form parameter
 - `research_question` and `key_finding` must each be a single sentence
-- `summary_short` must be exactly 2 sentences: the research question and the key finding, suitable as a standalone teaser in the email digest
+- `summary_short` must be exactly 2 sentences: a standalone LLM-authored teaser that frames the clinical question and states the key finding with enough context for a reader to decide whether to read the full summary
 - `triage_score` and `triage_rationale` are carried forward from the `PubmedRecord@filtered` source — they reflect why the filter stage selected this article
 - `raw_llm_response` preserves the unprocessed LLM output for quality auditing
 

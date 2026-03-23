@@ -3,7 +3,7 @@
 
 prompt_template_file: config/prompts/summary-prompt.md
 model: claude-sonnet-4-6
-max_tokens: 500
+max_tokens: 600
 
 subdomain_options:
   - Acute Treatment

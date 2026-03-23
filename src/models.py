@@ -125,7 +125,7 @@ class SummaryConfig:
 
     prompt_template: str = ""
     model: str = "claude-sonnet-4-6"
-    max_tokens: int = 500
+    max_tokens: int = 600
     subdomain_options: list[str] = field(
         default_factory=lambda: [
             "Acute Treatment",
