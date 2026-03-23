@@ -66,7 +66,7 @@ GITHOOKS_DIR="$(realpath "$SCRIPT_DIR/../.githooks")"
 SKILLS_DIR="$(realpath "$SCRIPT_DIR/../.claude/skills")"
 
 # Verify source files exist
-for f in "$TEMPLATES_DIR/spec.md" "$WORKFLOW_FILE" "$README_FILE"; do
+for f in "$TEMPLATES_DIR/spec-full.md" "$WORKFLOW_FILE" "$README_FILE"; do
   if [ ! -f "$f" ]; then
     echo "Error: source file not found: $f"
     echo "Run this script from the spec-workflow project directory."

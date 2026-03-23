@@ -67,7 +67,7 @@ done < "$DEV_ROOT/.graduateignore"
 # Always exclude git metadata and GitHub workflows
 EXCLUDE_ARGS+=(--exclude ".git")
 EXCLUDE_ARGS+=(--exclude ".github")
-EXCLUDE_ARGS+=(--exclude "CLAUDE.md")
+EXCLUDE_ARGS+=(--exclude "/CLAUDE.md")
 EXCLUDE_ARGS+=(--exclude "CLAUDE.public.md")
 EXCLUDE_ARGS+=(--exclude "README.public.md")
 EXCLUDE_ARGS+=(--exclude ".claude/projects/")
