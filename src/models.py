@@ -184,6 +184,26 @@ class BlogConfig:
 
 
 @dataclass
+class Subscriber:
+    """A digest recipient with optional topic preferences.
+
+    See docs/definitions/subscriber.md for the canonical schema.
+    """
+
+    email: str
+    name: str = ""
+    subdomains: list[str] = field(default_factory=list)  # empty = all topics
+
+
+@dataclass
+class SubscriberDigest:
+    """A per-subscriber personalized digest."""
+
+    subscriber: Subscriber
+    digest: EmailDigest
+
+
+@dataclass
 class EmailConfig:
     """See docs/definitions/email-config.md."""
 

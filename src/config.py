@@ -15,6 +15,7 @@ from src.models import (
     BlogConfig,
     BlogTemplatesConfig,
     EmailConfig,
+    Subscriber,
 )
 
 
@@ -59,6 +60,34 @@ def load_distribute_config(path: str = "config/distribute-config.yaml") -> Distr
 def load_email_config(path: str = "config/email-config.yaml") -> EmailConfig:
     data = _load_yaml(path)
     return EmailConfig(**data)
+
+
+def load_subscribers(
+    path: str = "config/subscribers.yaml",
+    email_config: EmailConfig | None = None,
+) -> list[Subscriber]:
+    """Load subscriber profiles from YAML.
+
+    Falls back to email_config.to_addresses (universal digest for each)
+    when the subscribers file does not exist.
+    """
+    config_path = Path(path)
+    if config_path.exists():
+        data = _load_yaml(path)
+        entries = data.get("subscribers", [])
+        return [
+            Subscriber(
+                email=entry["email"],
+                name=entry.get("name", ""),
+                subdomains=entry.get("subdomains", []),
+            )
+            for entry in entries
+        ]
+
+    # Fallback: synthesize from email-config.yaml to_addresses
+    if email_config and email_config.to_addresses:
+        return [Subscriber(email=addr) for addr in email_config.to_addresses]
+    return []
 
 
 def load_blog_config(path: str = "config/blog-config.yaml") -> BlogConfig:

@@ -13,6 +13,8 @@ requires:
     version: v0
   - name: blog-page
     version: v0
+  - name: subscriber
+    version: v0
 provides:
   - name: email-digest
     version: v0

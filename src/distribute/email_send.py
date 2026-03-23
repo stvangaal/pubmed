@@ -6,7 +6,7 @@ import os
 
 import resend
 
-from src.models import EmailConfig, EmailDigest
+from src.models import EmailConfig, EmailDigest, SubscriberDigest
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +55,59 @@ def send_digest(digest: EmailDigest, config: EmailConfig) -> bool:
     except Exception:
         logger.warning("Failed to send email", exc_info=True)
         return False
+
+
+def send_subscriber_digests(
+    subscriber_digests: list[SubscriberDigest],
+    config: EmailConfig,
+) -> int:
+    """Send personalized digests to each subscriber.
+
+    Args:
+        subscriber_digests: Per-subscriber digests built by build_subscriber_digests.
+        config: EmailConfig with sender and subject template.
+
+    Returns:
+        Number of emails sent successfully.
+    """
+    if not config.enabled:
+        logger.info("Email sending disabled (enabled: false), skipping")
+        return 0
+
+    api_key = os.environ.get("RESEND_API_KEY")
+    if not api_key:
+        logger.warning("RESEND_API_KEY not set, skipping email send")
+        return 0
+
+    resend.api_key = api_key
+    sent = 0
+
+    for sd in subscriber_digests:
+        subject = config.subject.format(
+            date_range=sd.digest.date_range,
+            article_count=sd.digest.article_count,
+        )
+        try:
+            params: resend.Emails.SendParams = {
+                "from": config.from_address,
+                "to": [sd.subscriber.email],
+                "subject": subject,
+                "html": _markdown_to_html(sd.digest.markdown),
+                "text": sd.digest.plain_text,
+            }
+            result = resend.Emails.send(params)
+            logger.info(
+                "Email sent to %s (id: %s)",
+                sd.subscriber.email,
+                result.get("id", "unknown"),
+            )
+            sent += 1
+        except Exception:
+            logger.warning(
+                "Failed to send email to %s", sd.subscriber.email, exc_info=True
+            )
+
+    return sent
 
 
 def _markdown_to_html(markdown: str) -> str:

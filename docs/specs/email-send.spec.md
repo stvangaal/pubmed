@@ -11,6 +11,8 @@ requires:
     version: v0
   - name: email-config
     version: v0
+  - name: subscriber
+    version: v0
 provides: []
 ---
 

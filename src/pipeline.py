@@ -12,14 +12,15 @@ from src.config import (
     load_distribute_config,
     load_blog_config,
     load_email_config,
+    load_subscribers,
 )
 from src.search.pubmed_query import search
 from src.filter.rule_filter import rule_filter
 from src.filter.llm_triage import llm_triage
 from src.summarize.llm_summarize import summarize
 from src.distribute.blog_publish import publish_blog
-from src.distribute.digest_build import build_digest
-from src.distribute.email_send import send_digest
+from src.distribute.digest_build import build_digest, build_subscriber_digests
+from src.distribute.email_send import send_digest, send_subscriber_digests
 
 logging.basicConfig(
     level=logging.INFO,
@@ -100,11 +101,21 @@ def run():
 
     # --- Stage 4c: Send email ---
     logger.info("Stage 4c: Send email")
-    sent = send_digest(digest, email_config)
-    if sent:
-        logger.info("  Email sent to: %s", ", ".join(email_config.to_addresses))
+    subscribers = load_subscribers(email_config=email_config)
+    if subscribers:
+        subscriber_digests = build_subscriber_digests(
+            summaries, subscribers, distribute_config, date_range, blog_page
+        )
+        sent_count = send_subscriber_digests(subscriber_digests, email_config)
+        logger.info(
+            "  Sent %d/%d personalized emails", sent_count, len(subscriber_digests)
+        )
     else:
-        logger.info("  Email not sent (disabled, no key, or error)")
+        sent = send_digest(digest, email_config)
+        if sent:
+            logger.info("  Email sent to: %s", ", ".join(email_config.to_addresses))
+        else:
+            logger.info("  Email not sent (disabled, no key, or error)")
 
     logger.info("Pipeline complete")
 

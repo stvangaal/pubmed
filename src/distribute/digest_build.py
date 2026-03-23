@@ -9,7 +9,14 @@ teaser with blog link for the rest.
 
 from pathlib import Path
 
-from src.models import BlogPage, LiteratureSummary, EmailDigest, DistributeConfig
+from src.models import (
+    BlogPage,
+    LiteratureSummary,
+    EmailDigest,
+    DistributeConfig,
+    Subscriber,
+    SubscriberDigest,
+)
 
 
 def _sort_summaries(
@@ -112,16 +119,15 @@ def _render_short_plain(
     )
 
 
-def build_digest(
+def _assemble_digest(
     summaries: list[LiteratureSummary],
     config: DistributeConfig,
     date_range: str,
     blog_page: BlogPage | None = None,
 ) -> EmailDigest:
-    """Assemble summaries into a formatted digest.
+    """Core assembly logic — builds an EmailDigest from summaries.
 
-    Uses tiered rendering: articles scoring >= full_summary_threshold get
-    the full summary, articles below get a 2-sentence teaser with a blog link.
+    Pure function with no side effects (no file I/O, no stdout).
     """
     article_count = len(summaries)
 
@@ -172,20 +178,6 @@ def build_digest(
     markdown_full = f"{opening_text}\n\n{markdown_body}\n\n{closing_text}\n"
     plain_full = f"{opening_text}\n\n{plain_body}\n\n{closing_text}\n"
 
-    # --- Write output files ---
-    md_path = Path(config.output.file)
-    md_path.parent.mkdir(parents=True, exist_ok=True)
-    md_path.write_text(markdown_full)
-
-    if config.output.plain_text:
-        pt_path = Path(config.output.plain_text_file)
-        pt_path.parent.mkdir(parents=True, exist_ok=True)
-        pt_path.write_text(plain_full)
-
-    # --- Print plain text to stdout ---
-    print(plain_full)
-
-    # --- Return EmailDigest ---
     return EmailDigest(
         date_range=date_range,
         article_count=article_count,
@@ -196,3 +188,57 @@ def build_digest(
         markdown=markdown_full,
         plain_text=plain_full,
     )
+
+
+def build_digest(
+    summaries: list[LiteratureSummary],
+    config: DistributeConfig,
+    date_range: str,
+    blog_page: BlogPage | None = None,
+) -> EmailDigest:
+    """Assemble summaries into a formatted digest.
+
+    Uses tiered rendering: articles scoring >= full_summary_threshold get
+    the full summary, articles below get a 2-sentence teaser with a blog link.
+    Writes output files and prints the plain-text version to stdout.
+    """
+    digest = _assemble_digest(summaries, config, date_range, blog_page)
+
+    # --- Write output files ---
+    md_path = Path(config.output.file)
+    md_path.parent.mkdir(parents=True, exist_ok=True)
+    md_path.write_text(digest.markdown)
+
+    if config.output.plain_text:
+        pt_path = Path(config.output.plain_text_file)
+        pt_path.parent.mkdir(parents=True, exist_ok=True)
+        pt_path.write_text(digest.plain_text)
+
+    # --- Print plain text to stdout ---
+    print(digest.plain_text)
+
+    return digest
+
+
+def build_subscriber_digests(
+    summaries: list[LiteratureSummary],
+    subscribers: list[Subscriber],
+    config: DistributeConfig,
+    date_range: str,
+    blog_page: BlogPage | None = None,
+) -> list[SubscriberDigest]:
+    """Build one personalized digest per subscriber.
+
+    Subscribers with empty subdomains receive all summaries.
+    Subscribers with specific subdomains receive only matching articles.
+    """
+    results = []
+    for sub in subscribers:
+        if sub.subdomains:
+            filtered = [s for s in summaries if s.subdomain in sub.subdomains]
+        else:
+            filtered = summaries
+
+        digest = _assemble_digest(filtered, config, date_range, blog_page)
+        results.append(SubscriberDigest(subscriber=sub, digest=digest))
+    return results

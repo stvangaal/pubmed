@@ -22,6 +22,7 @@ Publish weekly digests as a permanent web archive (GitHub Pages), assemble an em
 | blog-publish | Render digest as a Jekyll page, push to `gh-pages` branch, return blog URLs |
 | digest-build | Assemble summaries into email-ready text using configured template, with links pointing to blog pages |
 | email-send | Send the assembled digest to configured recipients via Resend API |
+| subscriber-preferences | Load subscriber profiles and filter digests by per-user subdomain preferences |
 
 ## Internal Structure
 

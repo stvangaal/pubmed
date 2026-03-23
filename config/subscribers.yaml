@@ -1,0 +1,19 @@
+# owner: subscriber-preferences
+# Subscriber profiles with optional topic preferences.
+#
+# Each subscriber receives a personalized digest containing only articles
+# matching their preferred subdomains. An empty subdomains list (or omitting
+# it entirely) means the subscriber receives all topics.
+#
+# Available subdomains (from summary-config.yaml):
+#   - Acute Treatment
+#   - Prevention
+#   - Rehabilitation
+#   - Hospital Care
+#   - Imaging
+#   - Epidemiology
+
+subscribers:
+  - email: "svangaal@gmail.com"
+    name: "Stefan"
+    subdomains: []  # all topics

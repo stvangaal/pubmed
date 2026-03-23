@@ -14,6 +14,7 @@
 | blog-page | v0 | draft | — | blog-publish |
 | email-config | v0 | draft | — | email-send |
 | email-digest | v0 | draft | — | digest-build, email-send |
+| subscriber | v0 | draft | — | subscriber-preferences, digest-build, email-send |
 
 ## Spec Index
 
@@ -25,7 +26,8 @@
 | llm-summarize | Phase 2 | ready | src/summarize/__init__.py, src/summarize/llm_summarize.py, src/summarize/parse_summary.py, tests/summarize/__init__.py, tests/summarize/test_llm_summarize.py, tests/summarize/test_parse_summary.py, config/summary-config.yaml, config/prompts/summary-prompt.md | pubmed-record, summary-config |
 | digest-build | Phase 2 | ready | src/distribute/__init__.py, src/distribute/digest_build.py, tests/distribute/__init__.py, tests/distribute/test_digest_build.py, config/distribute-config.yaml | literature-summary, distribute-config, blog-page |
 | blog-publish | Phase 3 | ready | src/distribute/blog_publish.py, tests/distribute/test_blog_publish.py, config/blog-config.yaml, config/templates/blog-post.md, config/templates/blog-index.md | literature-summary, blog-config |
-| email-send | Phase 3 | ready | src/distribute/email_send.py, tests/distribute/test_email_send.py, config/email-config.yaml | email-digest, email-config |
+| email-send | Phase 3 | ready | src/distribute/email_send.py, tests/distribute/test_email_send.py, config/email-config.yaml | email-digest, email-config, subscriber |
+| subscriber-preferences | Phase 3 | draft | config/subscribers.yaml | subscriber, literature-summary, distribute-config |
 | project-infrastructure | Phase 0 | draft | src/__init__.py, tests/__init__.py, src/models.py, src/config.py, src/pipeline.py, requirements.txt, .gitignore | — |
 
 ## Phase Summary
@@ -35,7 +37,7 @@
 | Phase 0 | 1 | draft |
 | Phase 1 | 3 | ready |
 | Phase 2 | 2 | ready |
-| Phase 3 | 2 | ready |
+| Phase 3 | 3 | ready / draft |
 
 ## Unowned Code
 <!-- This section should always be empty. If it is not, something
@@ -60,3 +62,4 @@
 ### Phase 3
 7. blog-publish (needs literature-summary@summarized; digest-build updated to accept blog URLs)
 8. email-send (needs email-digest@assembled)
+9. subscriber-preferences (needs subscriber config, literature-summary, distribute-config)
