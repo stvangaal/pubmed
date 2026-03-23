@@ -12,6 +12,8 @@ from src.models import (
     SummaryConfig,
     DistributeConfig,
     OutputConfig,
+    BlogConfig,
+    BlogTemplatesConfig,
 )
 
 
@@ -49,5 +51,14 @@ def load_distribute_config(path: str = "config/distribute-config.yaml") -> Distr
     output_data = data.pop("output", {})
     return DistributeConfig(
         output=OutputConfig(**output_data),
+        **data,
+    )
+
+
+def load_blog_config(path: str = "config/blog-config.yaml") -> BlogConfig:
+    data = _load_yaml(path)
+    templates_data = data.pop("templates", {})
+    return BlogConfig(
+        templates=BlogTemplatesConfig(**templates_data),
         **data,
     )

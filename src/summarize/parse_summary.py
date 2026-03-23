@@ -23,6 +23,7 @@ def parse_summary(
         - Design: ...
         - Primary outcome: ...
         - Limitations: ...
+        **Short Summary:** Two-sentence teaser.
     """
     try:
         lines = raw_response.strip().split("\n")
@@ -79,6 +80,17 @@ def parse_summary(
             )
             return None
 
+        # --- Short summary ---
+        summary_short = _extract_after_marker(
+            raw_response, "**Short Summary:**"
+        )
+        if summary_short is None:
+            logger.warning(
+                "Could not extract short summary from response: %s",
+                raw_response[:200],
+            )
+            return None
+
         return {
             "subdomain": subdomain,
             "citation": citation,
@@ -87,6 +99,7 @@ def parse_summary(
             "design": design,
             "primary_outcome": primary_outcome,
             "limitations": limitations,
+            "summary_short": summary_short,
         }
 
     except Exception:

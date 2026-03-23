@@ -106,6 +106,7 @@ def _summarize_one(
         design=parsed["design"],
         primary_outcome=parsed["primary_outcome"],
         limitations=parsed["limitations"],
+        summary_short=parsed["summary_short"],
         triage_score=record.triage_score,
         triage_rationale=record.triage_rationale,
         feedback_url=feedback_url,

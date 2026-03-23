@@ -3,11 +3,13 @@
 
 Produces both markdown and plain-text versions of the digest,
 writes them to output files, and prints the plain-text version to stdout.
+Uses tiered rendering: full summary for high-scoring articles, short
+teaser with blog link for the rest.
 """
 
 from pathlib import Path
 
-from src.models import LiteratureSummary, EmailDigest, DistributeConfig
+from src.models import BlogPage, LiteratureSummary, EmailDigest, DistributeConfig
 
 
 def _sort_summaries(
@@ -22,19 +24,17 @@ def _sort_summaries(
       date strings sort lexicographically).
     """
     if sort_by == "subdomain":
-        # Primary key: subdomain alphabetically. Secondary: score descending.
         return sorted(
             summaries, key=lambda s: (s.subdomain, -s.triage_score)
         )
     elif sort_by == "pub_date":
         return sorted(summaries, key=lambda s: s.pub_date, reverse=True)
     else:
-        # Default: triage_score descending
         return sorted(summaries, key=lambda s: s.triage_score, reverse=True)
 
 
-def _render_summary_markdown(summary: LiteratureSummary) -> str:
-    """Render a single summary in the markdown hybrid format."""
+def _render_full_markdown(summary: LiteratureSummary) -> str:
+    """Render a full summary in markdown format."""
     return (
         f"**{summary.subdomain}**\n"
         f"{summary.citation}\n"
@@ -54,8 +54,8 @@ def _render_summary_markdown(summary: LiteratureSummary) -> str:
     )
 
 
-def _render_summary_plain(summary: LiteratureSummary) -> str:
-    """Render a single summary in plain-text format (no markdown syntax)."""
+def _render_full_plain(summary: LiteratureSummary) -> str:
+    """Render a full summary in plain-text format."""
     pubmed_url = f"https://pubmed.ncbi.nlm.nih.gov/{summary.pmid}/"
     return (
         f"[{summary.subdomain}]\n"
@@ -76,22 +76,56 @@ def _render_summary_plain(summary: LiteratureSummary) -> str:
     )
 
 
+def _render_short_markdown(
+    summary: LiteratureSummary, blog_url: str | None
+) -> str:
+    """Render a short teaser summary in markdown format."""
+    read_more_url = blog_url or f"https://pubmed.ncbi.nlm.nih.gov/{summary.pmid}/"
+    return (
+        f"**{summary.subdomain}**\n"
+        f"{summary.citation}\n"
+        f"\n"
+        f"{summary.summary_short}\n"
+        f"\n"
+        f"[Read full summary]({read_more_url}) · [Feedback]({summary.feedback_url})\n"
+        f"\n"
+        f"---"
+    )
+
+
+def _render_short_plain(
+    summary: LiteratureSummary, blog_url: str | None
+) -> str:
+    """Render a short teaser summary in plain-text format."""
+    pubmed_url = f"https://pubmed.ncbi.nlm.nih.gov/{summary.pmid}/"
+    read_more_url = blog_url or pubmed_url
+    return (
+        f"[{summary.subdomain}]\n"
+        f"{summary.title}. {summary.journal}. PMID {summary.pmid} ({pubmed_url})\n"
+        f"\n"
+        f"{summary.summary_short}\n"
+        f"\n"
+        f"Full summary: {read_more_url}\n"
+        f"Feedback: {summary.feedback_url}\n"
+        f"\n"
+        f"---"
+    )
+
+
 def build_digest(
     summaries: list[LiteratureSummary],
     config: DistributeConfig,
     date_range: str,
+    blog_page: BlogPage | None = None,
 ) -> EmailDigest:
     """Assemble summaries into a formatted digest.
 
-    Sorts summaries per config.sort_by, renders opening/content/closing in
-    both markdown and plain-text formats, writes output files, prints the
-    plain-text version to stdout, and returns an EmailDigest object.
+    Uses tiered rendering: articles scoring >= full_summary_threshold get
+    the full summary, articles below get a 2-sentence teaser with a blog link.
     """
     article_count = len(summaries)
 
     # --- Opening ---
-    # Substitute {date_range} and {article_count} placeholders in the
-    # opening template. Using str.format_map so missing keys don't raise.
     opening_text = config.opening.format(
         date_range=date_range, article_count=article_count
     )
@@ -103,14 +137,26 @@ def build_digest(
     empty_message = "No practice-relevant articles identified this week."
 
     if not summaries:
-        # Empty digest: opening + notice + closing
         markdown_body = empty_message
         plain_body = empty_message
         summary_texts: list[str] = []
     else:
         sorted_summaries = _sort_summaries(summaries, config.sort_by)
-        md_parts = [_render_summary_markdown(s) for s in sorted_summaries]
-        pt_parts = [_render_summary_plain(s) for s in sorted_summaries]
+        md_parts = []
+        pt_parts = []
+
+        for s in sorted_summaries:
+            if s.triage_score >= config.full_summary_threshold:
+                md_parts.append(_render_full_markdown(s))
+                pt_parts.append(_render_full_plain(s))
+            else:
+                blog_url = (
+                    blog_page.article_urls.get(s.pmid)
+                    if blog_page
+                    else None
+                )
+                md_parts.append(_render_short_markdown(s, blog_url))
+                pt_parts.append(_render_short_plain(s, blog_url))
 
         markdown_body = "\n\n".join(md_parts)
         plain_body = "\n\n".join(pt_parts)
