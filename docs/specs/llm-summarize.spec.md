@@ -91,6 +91,7 @@ A list of `LiteratureSummary` objects, one per successfully summarized article.
 | LS3 | Skip articles on parse failure rather than halt | Halt pipeline on any failure | A digest with 4 of 5 articles is better than no digest. Failures are logged for investigation. | 2026-03-23 |
 | LS4 | Store raw LLM response alongside parsed fields | Discard raw response after parsing | Raw response enables quality auditing and prompt iteration without re-running the pipeline. Storage cost is trivial. | 2026-03-23 |
 | LS5 | Generate summary_short in the same LLM call as the full summary | Separate LLM call; derive by concatenating parsed fields | Single call keeps cost flat. LLM-authored teaser reads more naturally than mechanical concatenation of research_question + key_finding. Cost is ~20 extra tokens/article. | 2026-03-23 |
+| LS6 | Sonnet for summarization (same as triage), configurable via YAML | Opus for summarization; hardcoded model | Sonnet produces good structured summaries at ~5x lower cost than Opus. The rigid prompt format means the model follows instructions well. Both triage and summary models are already configurable in their respective YAML configs — upgrade to Opus with a one-line change if quality doesn't meet the bar. | 2026-03-23 |
 
 ## Tests
 
