@@ -5,9 +5,9 @@ A weekly automated pipeline that identifies practice-changing stroke publication
 ## What it does
 
 ```
-PubMed API → Search → Filter → Summarize → Blog + Digest
-  ~50/week    rule-based   LLM triage    LLM summary    gh-pages archive
-              + LLM        (~5-10/week)  (hybrid format) + email text
+PubMed API → Search → Filter → Summarize → Blog → Digest → Email
+  ~50/week    rule-based   LLM triage    LLM summary   gh-pages   tiered     Resend
+              + LLM        (~5-10/week)  (full+short)  archive    rendering  delivery
 ```
 
 Every week, the pipeline:
@@ -16,7 +16,8 @@ Every week, the pipeline:
 2. **Filters** aggressively — rule-based exclusions (animal studies, non-English, case reports), then LLM triage scoring for clinical relevance
 3. **Summarizes** each selected article with a stroke-domain LLM prompt that produces a structured clinical summary
 4. **Publishes** each digest as a permanent blog page on GitHub Pages
-5. **Assembles** an email digest with links to the blog page, ready to paste into an email
+5. **Assembles** an email digest with links to the blog page (full summaries for top articles, teasers for the rest)
+6. **Emails** the digest to configured recipients via Resend
 
 ## Sample output
 
@@ -142,7 +143,7 @@ For automated weekly runs, use GitHub Actions:
 name: Weekly Stroke Digest
 on:
   schedule:
-    - cron: '0 8 * * 1'  # Every Monday at 8am UTC
+    - cron: '0 16 * * 1'  # Every Monday at 12pm noon EDT (16:00 UTC)
   workflow_dispatch:       # Manual trigger for testing
 
 permissions:
@@ -166,6 +167,7 @@ jobs:
       - run: python3 -m src.pipeline
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       - uses: actions/upload-artifact@v4
         with:
           name: digest

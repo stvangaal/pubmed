@@ -46,20 +46,20 @@ A weekly automated pipeline that identifies practice-changing stroke publication
     │    @published               @assembled
     │       │                        │
     ▼       ▼                        ▼
-┌────────────────────────────────────────────────────┐
-│ DISTRIBUTE                                         │
-│                                                    │
-│ • blog-publish ───▶ • digest-build                 │
-│   (push to           (email digest with            │
-│    gh-pages)    blog  blog links)                  │
-│                 URLs                               │
-└────────────────────────────────────────────────────┘
-         ▲                        ▲
-    ┌────┴──────┐           ┌─────┴──────┐
-    │ blog      │           │ distribute │
-    │ config    │           │ config     │
-    └───────────┘           └────────────┘
-      CONFIG                  CONFIG
+┌─────────────────────────────────────────────────────────────┐
+│ DISTRIBUTE                                                  │
+│                                                             │
+│ • blog-publish ───▶ • digest-build ───▶ • email-send        │
+│   (push to    blog    (tiered email      (deliver via       │
+│    gh-pages)  URLs     rendering)         Resend API)       │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+         ▲                    ▲                   ▲
+    ┌────┴──────┐       ┌─────┴──────┐      ┌────┴─────┐
+    │ blog      │       │ distribute │      │ email    │
+    │ config    │       │ config     │      │ config   │
+    └───────────┘       └────────────┘      └──────────┘
+      CONFIG              CONFIG              CONFIG
 ```
 
 ## Stage Descriptions

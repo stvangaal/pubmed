@@ -1,6 +1,6 @@
 ---
 name: blog-publish
-status: draft
+status: ready
 owner: distribute
 owns:
   - src/distribute/blog_publish.py
@@ -165,13 +165,6 @@ These are **not in scope** for the initial implementation but are natural extens
 ### Integration Tests
 
 - **test_worktree_publish**: In a test repo with a `gh-pages` branch, verify that `publish_to_gh_pages()` creates the correct commit with the expected files. (Uses a temporary git repo, not the real remote.)
-
-## Implementation Updates Required
-
-These infrastructure changes are needed to support blog-publish:
-
-- <!-- TODO:IMPL --> Add `load_blog_config()` to `config.py` — load YAML and instantiate `BlogConfig` / `BlogTemplatesConfig`
-- <!-- TODO:IMPL --> Update `pipeline.py` to call blog-publish before digest-build and pass `BlogPage` to `build_digest()`
 
 ## Implementation Notes
 

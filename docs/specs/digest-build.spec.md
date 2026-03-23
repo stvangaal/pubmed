@@ -196,14 +196,6 @@ If the summary list is empty (e.g., quiet week or all articles failed summarizat
 
 N/A — no external dependencies. Digest build is a pure function of its inputs (summaries + config).
 
-## Breaking Changes (Phase 3)
-
-The Phase 3 blog-publish work added tiered rendering and BlogPage input. The existing implementation in `digest_build.py` predates these changes and requires updates:
-
-- <!-- TODO:IMPL --> Accept optional `BlogPage` parameter in `build_digest()` and use `article_urls` for short-summary "Read full summary" links
-- <!-- TODO:IMPL --> Add tiered rendering logic: select full vs short format based on `triage_score` vs `full_summary_threshold`
-- <!-- TODO:IMPL --> Add short-summary renderers (`_render_summary_short_markdown`, `_render_summary_short_plain`) with blog link and PubMed fallback
-
 ## Implementation Notes
 
 - The markdown and plain-text renderers should share the same ordering and content logic, differing only in formatting. Extract a common `render_summary(summary, format)` function.
