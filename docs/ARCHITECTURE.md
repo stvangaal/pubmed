@@ -1,292 +1,141 @@
-# Arboretum — Architecture
+# PubMed Stroke Monitor — Architecture
 
 ## Architecture Owner
 
-The project maintainer (currently @stvangaal). Final authority over shared definitions, cross-spec conflicts, skill/hook design, and layered enforcement decisions.
+The project maintainer (currently @stvangaal). Final authority over shared definitions, pipeline stage boundaries, and configuration surface design.
 
 ## Overview
 
-Arboretum is a spec-driven development framework for AI code agents. It provides governance infrastructure — hooks, skills, document templates, and `CLAUDE.md` guidance — so that every line of code in a project traces back to a human-authored specification.
+A weekly automated pipeline that identifies practice-changing stroke publications from PubMed, summarizes them using an LLM, and delivers a curated digest for distribution to clinical audiences.
 
-**Users:** Solo developers working with Claude Code (the primary AI agent). The framework is designed for one person playing all roles: architecture owner, spec author, reviewer.
+**Users:** Stroke clinicians and researchers who receive the weekly digest. Maintainers (1-2) who configure the pipeline. The comms person who forwards the digest to recipients.
 
-**External dependencies:** Claude Code's hook system (SessionStart, PreToolUse, PostToolUse events), GitHub (issues, PRs, Actions), and Bash (all automation is shell-based, no runtime dependencies).
+**External dependencies:** PubMed E-utilities API (search and fetch), an LLM API (filtering triage and summarization), an SMTP/email service (digest delivery), Google Forms (per-article feedback capture).
 
-**Two-repo model:** `arboretum-dev` (this repo) is the development repository containing specs, plans, dev-only skills, and tests. `arboretum` is the public distribution. Code flows one-way via GitHub Actions (`sync-public.yml`) on push to main.
+**Autonomy:** Runs weekly via GitHub Actions on a cron schedule. No human intervention required for normal operation.
 
-## Component Model
+**Distribution model:** Public GitHub repo. Users fork and configure via YAML files without modifying source code.
 
-Arboretum has three component types that work together to enforce the spec-driven workflow:
-
-### Hooks (Automatic Enforcement)
-
-Shell scripts in `.claude/hooks/` that fire on Claude Code events. They provide guardrails regardless of which skills are active or what the user is doing. All hooks degrade gracefully when governed documents don't exist yet.
-
-| Hook | File | Trigger | What it does | Blocking? |
-|---|---|---|---|---|
-| **SessionStart** | `session-start.sh` | Session init | Scans register, contracts, specs. Produces project state summary: missing docs, spec statuses, stale pins, layer-appropriate skills. | No |
-| **Pre-implementation** | `pre-implementation-check.sh` | Edit/Write to `src/` or `tests/` | Looks up file ownership in register, checks spec's definition pins against current versions, warns if unowned. Layer 1+ only. | No |
-| **Pre-commit branch** | `pre-commit-branch-check.sh` | `git commit` command | Blocks commits to protected branches (main/master). Layer 2+ only. | Yes |
-| **Post-commit** | `post-commit-check.sh` | After `git commit` | Categorizes committed files, flags unowned implementation files, definition changes without contract updates, spec changes without register updates. Layer 2+ only. | No |
-
-### Skills (On-demand Operations)
-
-Markdown-based skill definitions in `.claude/skills/<name>/SKILL.md`. Each skill is a prompt that Claude executes when invoked. Skills are categorized by function and by whether they are arboretum-owned (governance) or external (development process).
-
-**Governance skills** (arboretum-owned — enforce the spec-driven workflow):
-
-| Skill | Type | What it does |
-|---|---|---|
-| `/health-check` | Read | Full 8-check drift report: register vs. disk, unowned files, imports vs. requires, contracts vs. specs, contracts vs. definitions, spec status consistency, plan test sections, graph freshness |
-| `/check-contracts` | Read | Version pin staleness check (`contracts.yaml` vs. definition files) |
-| `/check-register` | Read | File ownership audit (unowned files, missing owned files) |
-| `/validate-refs` | Read | Cross-reference consistency between specs, definitions, register |
-| `/spec-status` | Read | Dashboard of all specs with statuses, dependencies, blockers |
-| `/sync-contracts` | Write | Regenerate `contracts.yaml` from spec frontmatter (dry-run first) |
-| `/promote-spec` | Write | Advance spec through status state machine (`draft` → `ready` → `in-progress` → `implemented`) |
-| `/generate-spec` | Write | Interactive generator for specs, definitions, architecture, reference docs from templates |
-| `/generate-register` | Write | Auto-generate `REGISTER.md` from spec frontmatter `owns:` fields |
-| `/consolidate` | Write | Formalize code changes into governed specs (bridge from code-first to spec-first) |
-| `/init-project` | Write | Bootstrap a new spec-driven project with templates, hooks, skills, and `CLAUDE.md` |
-| `/pr` | Write | Create spec-aware pull request: runs health check, identifies affected specs, pushes branch, creates PR with governance summary |
-| `/security-review` | Write | Prompt injection analysis for agent-facing code (hooks, skills, `CLAUDE.md`) |
-
-**Wrapper pattern:** Arboretum wraps external tools at transition points rather than replacing them. `/pr` wraps `gh pr create` by adding a health-check summary and spec awareness. `/consolidate` wraps the design-to-governance transition by converting superpowers design specs into governed specs. This keeps the underlying tools accessible while adding governance at the seams.
-
-**Workflow wrapper skills** (orchestrate transitions between stages):
-
-| Skill | Type | What it does |
-|---|---|---|
-| `/start` | Read | Entry point: detect change request, ensure issue exists, route to planned/exploratory path |
-| `/design` | Write | Brainstorm → consolidate flow: run external design thinking, then wrap output into governed specs |
-| `/finish` | Write | Verify → promote spec → PR flow: health check, security review (if needed), then create PR |
-| `/cleanup` | Read | Post-merge: switch to main, pull, delete feature branch, verify spec status |
-
-### CLAUDE.md (Guidance and Orchestration)
-
-The `CLAUDE.md` file at the project root provides persistent context to Claude Code. It is read at the start of every session and serves as the orchestration layer between hooks and skills:
-
-- **Spec-first gate:** Instructs Claude not to modify source files unless implementing a spec with status `in-progress`. This is guidance-level enforcement (Layer 0), not hook enforcement.
-- **Skill routing:** Documents available skills and when to use them, enabling Claude to suggest appropriate skills based on user intent.
-- **Workflow rules:** Git conventions (branch naming, explicit staging, commit messages), draft-mode behaviour, revision protocol.
-- **Project context:** Package structure, key documents, design decisions — the orientation material Claude needs to make good decisions.
-
-`CLAUDE.md` is the only component that works at every layer. Hooks can be disabled; skills can be uninvoked; but `CLAUDE.md` is always present in Claude's context.
-
-## Layered Enforcement Model
-
-Arboretum uses a three-layer model so projects can adopt governance incrementally. Each layer adds automation on top of the previous one. The current layer is configured in `.arboretum.yml` (`layer: 0`, `1`, or `2`).
-
-### Layer 0 — Starter (Manual enforcement via CLAUDE.md)
-
-**What's active:** `CLAUDE.md` guidance, document templates, `SPEC-WORKFLOW.md`, all skills (skills declare their own layer, but all are available at Layer 0).
-
-**What's enforced:** The spec-first gate is enforced by `CLAUDE.md` instruction, not by hooks. The SessionStart hook runs but only checks for missing documents and reports spec statuses. No hooks block any operations.
-
-**What it gives you:** A document hierarchy and a workflow. Claude knows the rules and follows them because `CLAUDE.md` says to. The human is the enforcement mechanism.
-
-**When to use:** New projects, small projects, or projects where the overhead of automated checks isn't worth it yet.
-
-### Layer 1 — Structure (Automated file ownership + register generation)
-
-**What's added:** The pre-implementation hook (`pre-implementation-check.sh`) activates. On every Edit/Write to implementation files (`src/`, `tests/`), it looks up file ownership in the register and reports the owning spec's status and definition pin freshness.
-
-**What it gives you:** Real-time ownership awareness. When Claude edits a file, it immediately sees which spec owns it and whether that spec's dependencies are current. The `/generate-register` skill becomes especially useful here — it auto-generates the register from spec frontmatter.
-
-**Upgrade signal:** The SessionStart hook suggests Layer 1 when it detects 3+ specs in `docs/specs/`.
-
-### Layer 2 — Governance (Branch protection + post-commit validation)
-
-**What's added:** The pre-commit branch check (`pre-commit-branch-check.sh`) blocks commits to `main`/`master`. The post-commit check (`post-commit-check.sh`) fires after every commit, flagging unowned files, definition changes without contract updates, and spec changes without register updates.
-
-**What it gives you:** Automated enforcement of the git workflow. Commits to protected branches are blocked (not just discouraged). Post-commit drift detection catches governance gaps immediately after each commit.
-
-**Upgrade signal:** The SessionStart hook suggests Layer 2 when it detects CI workflows or multiple git authors.
-
-### Layer Interaction
-
-All layers are additive. A Layer 2 project has everything from Layers 0 and 1 plus its own hooks. Skills are available at all layers but declare their own layer in frontmatter, which the SessionStart hook uses to show layer-appropriate skill suggestions.
-
-The key design choice: `CLAUDE.md` guidance (Layer 0) is the foundation that everything else builds on. Hooks at Layers 1 and 2 are defense-in-depth, not replacements for the guidance. If all hooks were disabled, `CLAUDE.md` would still instruct Claude to follow the workflow.
-
-## Data Model
-
-Arboretum manages five governed document types plus ephemeral plans. The relationships form a directed graph:
+## Pipeline Diagram
 
 ```
-Architecture (the map)
-    ├── identifies boundaries → Shared Definitions (the contracts)
-    └── names components → Specifications (the blueprints)
-
-Shared Definitions ←→ Specifications (version-pinned requires/provides)
-
-Specifications → Source Code (owns files, defines tests)
-
-Register (the index) → indexes Specs, Definitions, and Code
-
-contracts.yaml (version pins) → machine-readable pins from Spec tables, compared against Definition headers
+    PubmedRecord             PubmedRecord            LiteratureSummary        EmailDigest
+     @retrieved               @filtered                @summarized            @assembled
+         │                       │                         │                      │
+         ▼                       ▼                         ▼                      ▼
+┌─────────────────┐    ┌──────────────────┐    ┌────────────────────┐    ┌────────────────┐
+│ SEARCH          │───▶│ FILTER           │───▶│ SUMMARIZE          │───▶│ DISTRIBUTE     │
+│                 │    │                  │    │                    │    │                │
+│ • pubmed-query  │    │ • rule-filter    │    │ • llm-summarize   │    │ • digest-build │
+│                 │    │ • llm-triage     │    │                    │    │                │
+└─────────────────┘    └──────────────────┘    └────────────────────┘    └────────────────┘
+         ▲                      ▲                        ▲                      ▲
+    ┌────┴─────┐          ┌─────┴──────┐          ┌──────┴──────┐        ┌─────┴──────┐
+    │ search   │          │ filter     │          │ summary    │        │ distribute │
+    │ config   │          │ config     │          │ config     │        │ config     │
+    └──────────┘          └────────────┘          └────────────┘        └────────────┘
+      CONFIG                CONFIG                  CONFIG                CONFIG
 ```
 
-**Key entities:**
+## Stage Descriptions
 
-- **Spec** — Owns source files, declares requires/provides, progresses through status state machine (`draft` → `ready` → `in-progress` → `implemented`, with `revision-needed` as backward path)
-- **Shared Definition** — Versioned data contract (v0 while draft, v1+ when stable; every bump is breaking)
-- **Register entry** — Maps spec to phase, status, owned files, and dependencies
-- **Version pin** — A spec's declared dependency on a specific definition version, tracked in three places (spec tables, `contracts.yaml`, definition headers)
+| Stage | Purpose | Input | Output | Volume |
+|-------|---------|-------|--------|--------|
+| **Search** | Query PubMed API for recent stroke literature within the configured date window | Schedule trigger (cron) | PubmedRecord@retrieved | ~40-110/run |
+| **Filter** | Two-pass aggressive filtering: rule-based cut (study type, language, MeSH) then LLM triage for clinical relevance | PubmedRecord@retrieved | PubmedRecord@filtered | ~40-110 → ~30-80 → ~4-10 |
+| **Summarize** | Generate stroke-domain clinical summaries using an LLM with a specialized prompt | PubmedRecord@filtered | LiteratureSummary@summarized | ~4-10/run |
+| **Distribute** | Assemble paste-ready digest text with per-article feedback links | LiteratureSummary@summarized | EmailDigest@assembled | 1 digest/run |
 
-## 4-Level Architecture Model
+## Shared Definitions
 
-Arboretum projects use a 4-level hierarchy with single ownership at every level:
+### Flowing (transformed by stages)
 
-| Level | Artifact | Ownership declaration |
-|-------|---------|----------------------|
-| System | `ARCHITECTURE.md` | — (top of chain) |
-| Spec Group | `docs/groups/<name>.md` | `owner: architecture` in frontmatter |
-| Spec | `docs/specs/<name>.spec.md` | `owner: <group-name>` in frontmatter |
-| Code | Source files | `# owner: <spec-name>` in first comment line |
+| Definition | Description | Statuses |
+|------------|-------------|----------|
+| `pubmed-record` | Core domain object: PMID, title, authors, abstract, journal, MeSH terms, article type, publication date | `@retrieved`, `@filtered` |
+| `literature-summary` | One per filtered paper: structured summary (objective, methods, key finding, clinical relevance), feedback link | `@summarized` |
+| `email-digest` | Assembled digest: opening, ordered summaries with feedback links, closing | `@assembled` |
 
-The `owner:` label is used consistently at every level, always lowercase. A single `grep "owner:"` finds every ownership declaration in the project.
+### Config (read by stages, changed by users)
 
-Architecture archetypes define how the Spec Group layer is organized. The `/architect` skill interviews users to match their project to an archetype and scaffold the appropriate structure. Currently two archetypes exist: pipeline (temporal grouping by data transformation stages) and library (functional grouping by capability area).
+| Definition | Description | Used by |
+|------------|-------------|---------|
+| `search-config` | PubMed query terms, MeSH terms, date window, API key | Search |
+| `filter-config` | Include/exclude study types, journal list, language, LLM triage prompt and threshold | Filter |
+| `summary-config` | LLM prompt template, output sections, tone, length constraints | Summarize |
+| `distribute-config` | Digest title, opening/closing text, sort order, output paths | Distribute |
+| (feedback form config lives in `summary-config`, where per-article URLs are constructed) | | |
 
-## Data Flows
+## Essentials
 
-### Issue-to-PR Flow
+| Cost | Essential | Detail |
+|------|-----------|--------|
+| **HIGH** | Core domain object (`pubmed-record`) | Its shape is the pipeline's spine — every stage reads or transforms it. Get the fields right before writing stage code. |
+| **HIGH** | Summarization prompt | The LLM prompt for stroke-domain summaries IS the product. Quality here determines whether the digest is useful to clinicians. |
+| **MODERATE** | Filter calibration | The rule + LLM triage boundary. Too aggressive = miss practice-changing papers. Too permissive = noise. Target: ~5 articles/week. |
+| **MODERATE** | Config surface design | Users configure via YAML without seeing internals. The config schema is a user-facing API — changing it later breaks forks. |
+| **EASY TO MISS** | Google Form feedback loop | Each article needs a unique pre-filled URL (`?entry.FIELD_ID=PMID`). Must be part of the summary template, not an afterthought. |
+| **EASY TO MISS** | PubMed API rate limits | 3 req/sec without API key, 10 with. Query syntax for MeSH terms has gotchas (e.g., [MeSH Major Topic] vs [MeSH Terms]). |
 
-The primary workflow moves changes from GitHub issue to merged pull request:
+## Recommended Spikes
 
-```
-GitHub Issue → Spec (create/update) → Feature Branch → Implement → Commit → PR → Merge
-```
+### Spike 1: Summarization quality (HIGH)
 
-Two paths exist:
-- **Planned:** Issue → brainstorm (design spec in `docs/superpowers/specs/`) → `/consolidate` (governed spec in `docs/specs/`) → implement
-- **Exploratory:** Issue → branch → spike/experiment → `/consolidate` → implement properly
+- **What:** Take 10 real PubMed stroke abstracts from the past week. Write 3 prompt variations (structured extract, narrative, hybrid). Run all 30 and evaluate.
+- **Question:** Which prompt structure produces summaries a stroke clinician would find useful?
+- **Success:** Summaries let you immediately tell which papers matter and why, without re-reading the abstract.
 
-Both paths converge: a governed spec must exist and be `in-progress` before production code is written.
+### Spike 2: Core domain object shape (HIGH)
 
-### Spec Implementation Flow
+- **What:** Pull 20 PubMed records via E-utilities. Map the raw XML/JSON to the proposed `pubmed-record` schema. Verify all fields needed by downstream stages.
+- **Question:** Does PubMed's API return everything the filter and summarizer need?
+- **Success:** Real records map cleanly to the schema with no missing fields or awkward transformations.
 
-When Claude implements a spec, context is derived automatically:
+### Spike 3: Filter calibration (MODERATE)
 
-1. Read `docs/ARCHITECTURE.md` (always)
-2. Read the spec being implemented
-3. From the spec's Requires table, resolve each dependency to its definition or provider spec
-4. Via `docs/REGISTER.md`, find owned files of required specs
-5. Read any files referenced in Implementation Notes
+- **What:** Take a week's worth of PubMed stroke results (~200). Manually classify 20 as "practice-changing" or not. Run rule-based filter then LLM triage. Compare.
+- **Question:** Can the two-pass filter hit ~5/week without missing papers you'd hand-pick?
+- **Success:** Filter output matches manual picks with ≤1 false negative.
 
-### Three-way Version Sync
+## Scope Fence (v1)
 
-Definition versions are tracked in three places that must stay in sync:
+**In scope:** PubMed abstract-only pipeline, GitHub Actions scheduling, single recipient (comms person), YAML configuration, Google Form feedback, public repo.
 
-```
-Definition file (## Version header)  ← canonical source
-         ↕
-Spec tables (Requires/Provides)      ← human-readable
-         ↕
-contracts.yaml                        ← machine-readable, used by contract tests
-```
+**Out of scope:** Web UI, historical backfill, full-text PDF analysis, direct mass email, multi-user accounts.
 
-When a definition version bumps, all three must be updated. Contract tests detect staleness by comparing `contracts.yaml` pins against definition file headers. The `/check-contracts` and `/sync-contracts` skills automate detection and repair.
+## Decisions and Rationale
 
-### Design-to-Governance Flow
-
-Design specs in `docs/superpowers/specs/` are informal, exploratory documents. The `/consolidate` skill converts them into governed specs in `docs/specs/` with correct frontmatter, status tracking, and register integration. This is a one-way promotion — governed specs are the source of truth once they exist.
-
-## Integration Points
-
-### Claude Code Hook System
-
-Arboretum depends on Claude Code's event system for automatic enforcement. Hooks are configured in `.claude/settings.json` and fire on:
-- `SessionStart` (startup matcher)
-- `PreToolUse` (Edit|Write matcher for implementation checks; Bash matcher for commit checks)
-- `PostToolUse` (Bash matcher for post-commit checks)
-
-Hooks receive tool input as JSON on stdin and can output `additionalContext` (non-blocking) or exit code 2 (blocking).
-
-### GitHub
-
-- **Issues:** Entry point for all work. Referenced in commit messages and PR descriptions.
-- **Pull requests:** Created via `/pr` skill, which wraps `gh pr create` with governance metadata.
-- **Actions:** `sync-public.yml` workflow syncs `arboretum-dev` → `arboretum` on push to main.
-
-### File System
-
-All governance state lives in the file system — no database, no external service. The register, specs, definitions, and `contracts.yaml` are plain text files that git tracks. This means governance state is versioned, diffable, and branchable.
-
-## Cross-Cutting Concerns
-
-### Graceful Degradation
-
-Every piece of automation handles missing documents without failing. The SessionStart hook reports missing docs rather than crashing. The pre-implementation hook exits silently if no register exists. Skills check for document existence before operating. This is critical because:
-- New projects start with no governed documents
-- The document creation order is strict (architecture → definitions → specs → register → contracts.yaml)
-- Each document depends on its predecessors existing
-
-### Layer-Aware Activation
-
-Hooks check `.arboretum.yml` for the current layer and skip themselves if below their activation layer. Skills declare their layer in frontmatter. The SessionStart hook advertises which skills are active at the current layer. This prevents overwhelming new projects with automation they haven't opted into.
-
-### Two-Repo Distribution
-
-The `arboretum-dev` → `arboretum` sync excludes:
-- Skills prefixed with `dev-` (project-internal)
-- `docs/specs/`, `docs/plans/`, `docs/superpowers/`, `docs/reviews/` (dev-only)
-- Files listed in `.graduateignore`
-
-Public-facing file pairs: `CLAUDE.public.md` → `CLAUDE.md`, `README.public.md` → `README.md` in the public repo.
+| ID | Decision | Alternatives | Rationale | Date |
+|----|----------|-------------|-----------|------|
+| A1 | Pipeline archetype with temporal stage grouping | Library/hub-and-spoke; monolithic script | Data flows linearly through transformation stages — pipeline is the natural fit. Monolithic script doesn't scale to configurable stages. | 2026-03-23 |
+| A2 | Hybrid filter: rule-based then LLM triage | Rules-only; LLM-only | Rules are free and fast for coarse filtering (study type, language). LLM catches nuance (clinical relevance) on the ~30 survivors. Pure LLM wastes tokens on obvious exclusions. | 2026-03-23 |
+| A3 | YAML config files as user-facing API | Environment variables; JSON; Python config objects | YAML is human-readable, diff-friendly, and familiar to non-developers. Config files are the only thing fork users need to edit. | 2026-03-23 |
+| A4 | GitHub Actions for scheduling | Local cron; AWS Lambda; GCP Cloud Run | Free for public repos, zero infra for fork users, built-in secrets management. Acceptable trade-off: 6-hour minimum schedule granularity (weekly is fine). | 2026-03-23 |
+| A5 | Paste-ready digest in v1 (comms person copies into email) | Automated SMTP; API-based email service | Removes email deliverability complexity from v1. Comms person handles distribution using their existing tooling. Automated sending deferred to future phase. | 2026-03-23 |
+| A6 | Google Form with pre-filled PMID for feedback | Custom endpoint; GitHub Issues; email reply | Zero infrastructure. Pre-filled PMID links feedback to specific articles. Responses land in a Google Sheet for analysis. Can upgrade later. | 2026-03-23 |
 
 ## Phase Map
 
 | Phase | Specs | Goal |
 |-------|-------|------|
-| Phase 0 (current) | `consolidate-spec.spec.md`, `git-workflow-tooling.spec.md` | Bootstrap governance infrastructure and validate with sample project |
+| Phase 0 | project-infrastructure, test-infrastructure | Bootstrap project structure, CI, and test framework |
+| Phase 1 | pubmed-query, rule-filter, llm-triage | Search and filter stages — the data acquisition half of the pipeline |
+| Phase 2 | llm-summarize, digest-build | Summarize and distribute stages — the output half |
+| Future | email-send (deferred) | Automated email delivery — not in v1 scope |
 
 ## Dependency Graph
 
-Both current specs are independent (no cross-spec dependencies):
-
 ```
 Phase 0:
-  1. git-workflow-tooling.spec (no dependencies)
-  2. consolidate-spec.spec (no dependencies)
+  1. project-infrastructure (no dependencies)
+  2. test-infrastructure (no dependencies)
+
+Phase 1:
+  3. pubmed-query (no cross-spec dependencies)
+  4. rule-filter (needs pubmed-record definition from search stage)
+  5. llm-triage (needs rule-filter output)
+
+Phase 2:
+  6. llm-summarize (needs pubmed-record@filtered)
+  7. digest-build (needs literature-summary@summarized)
 ```
-
-As the project matures and more specs are added, this graph will show the implementation order derived from requires/provides declarations.
-
-## Project Graph
-
-The project maintains a persistent, derived graph (`project-graph.yaml`) that captures relationships between all project entities. Unlike REGISTER.md (file ownership) and contracts.yaml (version pins), which each track one type of relationship, the project graph aggregates all relationship types into a single queryable artifact.
-
-**The graph is derived, not authoritative.** REGISTER.md, contracts.yaml, and spec/skill frontmatter remain the sources of truth. The graph is regenerated from them by `scripts/generate-graph.sh` and validated for staleness by the health check.
-
-### Nodes
-
-Specs, skills, scripts, hooks, governed documents, and shared definitions.
-
-### Edges
-
-| Relationship | Meaning | Source |
-|---|---|---|
-| `owns` | Spec owns a file | REGISTER.md |
-| `requires` / `provides` | Spec dependency | Spec tables, contracts.yaml |
-| `calls` / `suggests` | Skill invokes another skill | Skill body text |
-| `runs` | Skill executes a script | Skill body text |
-| `belongs-to-stage` | Skill belongs to workflow stage | Generator stage map |
-
-### Usage
-
-The `/orient` skill queries the graph to provide codebase-aware orientation: given a change description, it identifies which specs, skills, and scripts are relevant and flags gaps where no spec covers the proposed change. It is called by `/start`, `/design`, and `/consolidate` to inform routing decisions.
-
-## Decisions and Rationale
-
-| ID | Decision | Alternatives | Rationale | Affected Specs | Date |
-|----|----------|-------------|-----------|----------------|------|
-| A1 | Three-layer enforcement model (L0/L1/L2) | All-or-nothing enforcement; per-hook toggles | Layers let projects adopt incrementally. Per-hook toggles are too granular. All-or-nothing discourages adoption. | All specs | 2026-03-17 |
-| A2 | `CLAUDE.md` as Layer 0 foundation | Hooks-only enforcement; external config file | `CLAUDE.md` is always in context — it works even with no hooks. Hooks are defense-in-depth, not primary enforcement. | All specs | 2026-03-15 |
-| A3 | Wrapper pattern for external tools | Replace external tools; ignore external tools | Wrapping preserves access to underlying tools while adding governance at transition points. Replacement creates lock-in. Ignoring misses enforcement opportunities. | `git-workflow-tooling.spec` | 2026-03-17 |
-| A4 | Three-way version sync (spec tables, contracts.yaml, definition headers) | Single source of truth; two-way sync | Spec tables are human-readable, `contracts.yaml` is machine-readable, definition headers are canonical. The sync cost is accepted; contract tests detect drift mechanically. | All specs using shared definitions | 2026-03-15 |
-| A5 | Skills declare their own layer in frontmatter | Central skill registry; no layer awareness | Keeps skill metadata co-located with skill definition. SessionStart reads frontmatter to build layer-appropriate suggestions. No central registry to maintain. | All specs | 2026-03-17 |
-| A6 | Graceful degradation over strict prerequisite checks | Fail-fast when documents missing; silent skip | Reporting what's missing is more useful than crashing. Silent skip hides problems. Projects must be able to start from zero and build up. | All specs | 2026-03-15 |
-| A7 | File-system-only governance state | Database; external service; git notes | Plain text files are versioned, diffable, branchable. No external dependencies. The register is a lookup table, not a queryable store. | All specs | 2026-03-15 |
-| A8 | 4-level architecture model with consistent `owner:` label | C4 as-is; flat spec list; per-level labels | C4's Container level is empty for small projects. Consistent `owner:` label enables `grep "owner:"` across the entire project. The model adapts to project shape via archetypes. | All specs | 2026-03-20 |

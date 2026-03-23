@@ -10,3 +10,13 @@ venv/
 .env
 *.db-journal
 .superpowers/
+
+# Pipeline output (regenerated each run)
+output/
+
+# Runtime state (per-installation, not config)
+data/seen-pmids.json
+
+# Spike results (development only)
+spikes/*/spike_results*.json
+/tmp/

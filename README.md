@@ -1,172 +1,165 @@
-# Arboretum
+# PubMed Stroke Monitor
 
-**A spec-driven development framework for AI code agents.**
+A weekly automated pipeline that identifies practice-changing stroke publications from PubMed, summarizes them using an LLM, and delivers a curated digest for clinical audiences.
 
-Arboretum gives AI-assisted projects a document-first workflow where every line of code traces to a human-authored specification. You define *what* to build and *why*; the AI implements *how* — within boundaries you control.
-
-Arboretum externalizes the practices that experienced software engineers carry intuitively — project structure, work sequencing, safe evolution — into a process that anyone can follow.
-
-## Who This Is For
-
-Arboretum is for **domain experts building software with AI code agents**. If you have deep knowledge in your field but limited experience structuring software projects, this framework gives you opinionated guidance on how to think about what you're building, how to sequence the work, and how to evolve your project safely.
-
-## What This Is Not
-
-- **Not a library or framework you import** — there are no runtime dependencies. Arboretum is a workflow system made of documents, templates, and AI skills.
-- **Not a CI/CD tool** — it complements your build pipeline, it doesn't replace it.
-- **Not language-specific** — the governed workflow works with any language or stack.
-
-## Principles
-
-These are the ideas behind the workflow. Each one addresses a mistake that's expensive to learn the hard way.
-
-### Think before you build
-
-Every project starts with an architecture interview that helps you articulate what you're building, where it stops, what the risks are, and what needs exploration before committing to code. This happens before any implementation.
-
-### Shape ideas before writing code
-
-Work flows from abstract to concrete: problem statement → spike-spec cycles → governed spec → implementation. Spikes are cheap exploration tied to specific architectural questions. Code only gets written when the idea is mature — when a spec moves from draft to in-progress.
-
-### Make the right thing easy
-
-Templates, automation, and slash skills reduce the gap between knowing what to do and actually doing it. If the right thing requires manual discipline to remember, it won't happen consistently. Arboretum encodes good practices into the tools so the path of least resistance is also the correct path.
-
-### Own every line
-
-Every source file is owned by exactly one specification. This is single responsibility at the document level — if you need to change behaviour, you find the spec that owns it, update the spec, then update the code. No orphaned files, no ambiguous ownership, no changes without context.
-
-### Change without breaking
-
-Software lives longer than you expect, and requirements shift. These principles make evolution cheap and safe:
-
-- **Single responsibility** — components that do one thing don't cause ripple effects when changed.
-- **Low coupling** — components that don't know about each other can't break each other.
-- **Explicit contracts** — when the interface between A and B is written down, internals can change freely.
-- **Small, frequent changes** — easier to reason about, easier to revert.
-- **Tests as change detectors** — test-driven development tells you what you broke before your users do.
-
-### Learn from each cycle
-
-Natural stopping points (after a PR merges, after a spike completes) include a prompt to reflect on what you learned. The value isn't the log — it's building the habit of extracting lessons while the context is fresh.
-
-## Components
-
-### Architecture modeling
-
-The `/architect` skill guides you through a structured interview to determine your project's shape. It matches your project to an architecture archetype (e.g., pipeline, library) that provides canonical structure, essential decisions to make early, and areas that need exploratory spikes.
-
-Projects use a 4-level architecture model:
-
-| Level | What it captures | Artifact |
-|-------|-----------------|----------|
-| **System** | What the project is, who uses it | `ARCHITECTURE.md` |
-| **Spec Group** | Major capability areas | `docs/groups/<name>.md` |
-| **Spec** | Single responsibility units | `docs/specs/<name>.spec.md` |
-| **Code** | Source files | Files with `# owner: <spec-name>` header |
-
-### Workflow stages
-
-The development workflow sequences decisions so they happen in the right order:
+## What it does
 
 ```
-Problem / Issue
-    │
-    ▼
-Architecture Interview ──── /architect
-    │
-    ▼
-Design ◄──── brainstorm → consolidate into governed spec
-    │
-    ▼
-Plan ──────── implementation plan with test strategy
-    │
-    ▼
-Implement ─── TDD: red → green → refactor
-    │
-    ▼
-Finish ────── verification → spec promotion → PR
-    │
-    ▼
-Reflect ───── what did you learn?
-    │
-    ▼
-Cleanup ───── post-merge housekeeping
+PubMed API → Search → Filter → Summarize → Digest
+  ~50/week    rule-based   LLM triage    LLM summary    paste-ready
+              + LLM        (~5-10/week)  (hybrid format) email text
 ```
 
-Two paths exist: **planned** (you know what to build) and **exploratory** (you need to investigate first). The exploratory path adds spike-spec cycles before implementation.
+Every week, the pipeline:
 
-### Progressive governance
+1. **Searches** PubMed for stroke literature indexed in the past 7 days
+2. **Filters** aggressively — rule-based exclusions (animal studies, non-English, case reports), then LLM triage scoring for clinical relevance
+3. **Summarizes** each selected article with a stroke-domain LLM prompt that produces a structured clinical summary
+4. **Assembles** a digest with per-article feedback links, ready to paste into an email
 
-Arboretum scales with your project:
+## Sample output
 
-- **Layer 0 (Foundation)** — CLAUDE.md, minimal specs, core skills. Always on.
-- **Layer 1 (Structure)** — Architecture doc, auto-register, shared definitions. Activates at 3+ specs.
-- **Layer 2 (Governance)** — Version pins, CI integration, team review gates. Activates for multi-dev.
+Each article in the digest looks like this:
 
-Start simple. Add governance only when complexity warrants it.
+> **Acute Treatment**
+> Safety and efficacy of direct versus conventional transfer to angiography suite... *The Lancet Neurology*. [41864232](https://pubmed.ncbi.nlm.nih.gov/41864232/)
+>
+> **Research Question:** Does bypassing standard CT imaging in favour of direct transfer to the angiography suite improve outcomes in patients with clinically suspected large vessel occlusion stroke?
+>
+> Direct transfer to angiography suite was stopped early for safety after symptomatic intracranial haemorrhage occurred in 15% of DTAS patients versus 0% of conventionally managed patients...
+>
+> **Details:**
+> - Design: Multicentre open-label RCT, N=115
+> - Primary outcome: mRS 0-2 at 90 days — 36% vs 42% (adjusted OR 0.73)
+> - Limitations: Trial stopped early, underpowered for definitive conclusions
 
-### Skills
-
-Skills are slash commands that automate governance tasks:
-
-| Skill | What it does |
-|-------|-------------|
-| `/architect` | Guided architecture interview and scaffolding |
-| `/init-project` | Bootstrap project governance end-to-end |
-| `/start` | Entry point for new work — routes to the right workflow path |
-| `/generate-spec` | Create a new spec from a template |
-| `/health-check` | Detect drift between specs and code |
-| `/spec-status` | Show the current state of all specs |
-
-## Getting Started
+## Quick start
 
 ### Prerequisites
 
-- **macOS or Linux** (Windows: use [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install))
-- [Git](https://git-scm.com/)
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLI)
+- Python 3.11+
+- An [Anthropic API key](https://console.anthropic.com/) (for LLM filtering and summarization)
 
-### Create a New Project
-
-```bash
-# Clone arboretum (once)
-git clone https://github.com/stvangaal/arboretum.git ~/arboretum_framework
-
-# Bootstrap a new project
-#   ~/arboretum_framework/bin/arboretum bootstrap ~/<Projects>/<New_Repo>
-#
-#   <Projects>  — your projects directory (e.g. Projects, repos, src)
-#   <New_Repo>  — the project you want to create
-#
-# Example:
-~/arboretum_framework/bin/arboretum bootstrap ~/Projects/rule-flow
-```
-
-This creates a project with arboretum-owned scaffolding (workflow, templates, skills) and project-owned files (CLAUDE.md, specs, code) that you control.
-
-### Update an Existing Project
+### Setup
 
 ```bash
-# From inside your project
-./arboretum update
+git clone <repo-url> && cd pubmed
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+export ANTHROPIC_API_KEY=your-key-here
 ```
 
-This refreshes arboretum-owned files (workflow docs, skills, hooks) without touching your project files.
+### Configure
 
-## Where Flexibility Exists
+Edit the YAML files in `config/` to customize the pipeline for your domain:
 
-Arboretum is opinionated, but not rigid:
+| File | What it controls |
+|------|-----------------|
+| `config/search-config.yaml` | PubMed query (MeSH terms, date window) |
+| `config/filter-config.yaml` | Rule-based filters + LLM triage (model, threshold, max articles) |
+| `config/summary-config.yaml` | Summary format (model, prompt, subdomain tags, feedback form) |
+| `config/distribute-config.yaml` | Digest template (opening, closing, sort order, output paths) |
 
-- **Architecture archetypes are starting points** — they give you a structure to begin with. If your project doesn't fit an archetype, the system scaffolds a minimal architecture you can shape yourself.
-- **Governance is progressive** — you opt into complexity when your project needs it. A solo project with 2 specs doesn't need version pins or CI gates.
-- **Spikes are first-class** — when you don't know the answer, the framework expects you to explore before committing. Spikes are not failure; they're the process working correctly.
-- **Skills suggest, not block** — workflow skills recommend next steps but don't prevent you from working differently if you have a reason.
+LLM prompts are in `config/prompts/` and can be edited independently:
 
-## Sample Project
+| File | Purpose |
+|------|---------|
+| `config/prompts/triage-prompt.md` | System prompt for relevance scoring (what makes an article practice-changing?) |
+| `config/prompts/summary-prompt.md` | System prompt for article summarization (output format and tone) |
 
-See `examples/rule-flow-engine/` for a fully governed sample with every arboretum artifact: architecture, definitions, specs, register, and version pins.
+### Run
 
-## Contributing
+```bash
+python3 -m src.pipeline
+```
 
-Arboretum is maintained at [arboretum-dev](https://github.com/stvangaal/arboretum-dev). If you'd like to contribute, open an issue there.
+Output is written to `output/digest.md` (markdown) and `output/digest.txt` (plain text), and printed to stdout.
+
+### Customize for your domain
+
+The default configuration targets **stroke medicine**. To adapt for a different clinical domain:
+
+1. Edit `config/search-config.yaml` — change `mesh_terms` to your domain's MeSH terms
+2. Edit `config/filter-config.yaml` — update `priority_journals` and adjust `include_article_types`/`exclude_article_types` as needed
+3. Edit `config/prompts/triage-prompt.md` — replace stroke-specific scoring guidance with your domain's criteria for "practice-changing"
+4. Edit `config/prompts/summary-prompt.md` — update the subdomain tags and any domain-specific instructions
+
+No source code changes required.
+
+## Project structure
+
+```
+pubmed/
+  config/                    # User-editable YAML config + LLM prompts
+    prompts/
+      triage-prompt.md       # LLM triage scoring prompt
+      summary-prompt.md      # LLM summary generation prompt
+    search-config.yaml
+    filter-config.yaml
+    summary-config.yaml
+    distribute-config.yaml
+  src/                       # Pipeline source code
+    search/                  # Stage 1: PubMed API query
+    filter/                  # Stage 2: Rule filter + LLM triage
+    summarize/               # Stage 3: LLM summarization
+    distribute/              # Stage 4: Digest assembly
+    models.py                # Shared data models
+    config.py                # Config loader
+    pipeline.py              # Orchestrator
+  output/                    # Generated digests (gitignored)
+  data/                      # Runtime state — seen PMIDs (gitignored)
+  spikes/                    # Exploratory spike code (development only)
+  docs/                      # Architecture, specs, definitions
+```
+
+## How filtering works
+
+The pipeline uses a two-pass hybrid filter to keep the digest high-signal:
+
+**Pass 1 — Rule-based (free, fast):** Removes articles by language (non-English), study type (case reports, editorials, animal studies), and abstract availability. Typically removes 15-25% of results.
+
+**Pass 2 — LLM triage (costs tokens, nuanced):** Scores surviving articles 0.00-1.00 for clinical relevance using a stroke-domain prompt. Articles scoring >= 0.70 are included (configurable). The prompt recognizes RCTs, guidelines, authoritative reviews from top journals, and imaging studies with diagnostic impact.
+
+## Feedback
+
+Each article in the digest includes a feedback link that pre-fills a Google Form with the article's PMID. Configure your Google Form URL and field ID in `config/summary-config.yaml`.
+
+## Scheduling
+
+For automated weekly runs, use GitHub Actions:
+
+```yaml
+# .github/workflows/weekly-digest.yml
+name: Weekly Stroke Digest
+on:
+  schedule:
+    - cron: '0 8 * * 1'  # Every Monday at 8am UTC
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - run: python3 -m src.pipeline
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digest
+          path: output/
+```
+
+## Cost
+
+At typical volumes (~50 articles/week, ~5-10 summaries):
+- LLM triage: ~$0.02/run (Sonnet 4.6)
+- Summarization: ~$0.01/run (Sonnet 4.6)
+- **Total: ~$0.03/week**
+
+## License
+
+MIT
