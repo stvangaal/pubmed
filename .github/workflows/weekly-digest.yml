@@ -2,10 +2,9 @@
 name: Weekly Stroke Digest
 
 on:
-  # TODO: Enable cron after confirming workflow runs successfully
-  # schedule:
-  #   - cron: '0 8 * * 1'  # Every Monday at 8am UTC
-  workflow_dispatch:  # Manual trigger for testing
+  schedule:
+    - cron: '0 16 * * 1'  # Every Monday at 12pm noon EDT (16:00 UTC)
+  workflow_dispatch:  # Manual trigger
 
 permissions:
   contents: write  # Needed to push blog pages to gh-pages
