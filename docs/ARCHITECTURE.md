@@ -142,6 +142,7 @@ A weekly automated pipeline that identifies practice-changing stroke publication
 | A6 | Google Form with pre-filled PMID for feedback | Custom endpoint; GitHub Issues; email reply | Zero infrastructure. Pre-filled PMID links feedback to specific articles. Responses land in a Google Sheet for analysis. Can upgrade later. | 2026-03-23 |
 | A7 | GitHub Pages for blog archive | Ghost; WordPress; Notion | Already on GitHub Actions — blog publish is a git push to `gh-pages`. Free, markdown-native, zero additional infrastructure. Jekyll is built-in. | 2026-03-23 |
 | A8 | User-editable blog templates in config/ | Hardcoded in Python; Jinja2 | Templates as config files preserve the code-vs-config separation. Simple placeholder substitution avoids adding Jinja2 as a dependency. | 2026-03-23 |
+| A9 | Resend for email delivery | SendGrid; AWS SES; SMTP | Simplest API, generous free tier (100 emails/day), single sender email verification. No DNS changes needed to start with test sender. | 2026-03-23 |
 
 ## Phase Map
 
@@ -150,8 +151,7 @@ A weekly automated pipeline that identifies practice-changing stroke publication
 | Phase 0 | project-infrastructure, test-infrastructure | Bootstrap project structure, CI, and test framework |
 | Phase 1 | pubmed-query, rule-filter, llm-triage | Search and filter stages — the data acquisition half of the pipeline |
 | Phase 2 | llm-summarize, digest-build | Summarize and distribute stages — the output half |
-| Phase 3 | blog-publish | Blog archive on GitHub Pages — permanent web reference for digests |
-| Future | email-send (deferred) | Automated email delivery — not in v1 scope |
+| Phase 3 | blog-publish, email-send | Blog archive on GitHub Pages + automated email delivery via Resend |
 
 ## Dependency Graph
 
@@ -171,4 +171,5 @@ Phase 2:
 
 Phase 3:
   8. blog-publish (needs literature-summary@summarized; digest-build updated to accept blog URLs)
+  9. email-send (needs email-digest@assembled)
 ```
