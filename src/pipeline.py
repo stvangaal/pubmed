@@ -11,6 +11,7 @@ from src.config import (
     load_summary_config,
     load_distribute_config,
     load_blog_config,
+    load_email_config,
 )
 from src.search.pubmed_query import search
 from src.filter.rule_filter import rule_filter
@@ -18,6 +19,7 @@ from src.filter.llm_triage import llm_triage
 from src.summarize.llm_summarize import summarize
 from src.distribute.blog_publish import publish_blog
 from src.distribute.digest_build import build_digest
+from src.distribute.email_send import send_digest
 
 logging.basicConfig(
     level=logging.INFO,
@@ -44,6 +46,7 @@ def run():
     summary_config = load_summary_config()
     blog_config = load_blog_config()
     distribute_config = load_distribute_config()
+    email_config = load_email_config()
 
     run_date = datetime.now()
     date_range = _make_date_range(run_date, search_config.date_window_days)
@@ -94,6 +97,14 @@ def run():
     digest = build_digest(summaries, distribute_config, date_range, blog_page)
     logger.info(f"  Digest assembled: {digest.article_count} articles")
     logger.info(f"  Written to: {distribute_config.output.file}")
+
+    # --- Stage 4c: Send email ---
+    logger.info("Stage 4c: Send email")
+    sent = send_digest(digest, email_config)
+    if sent:
+        logger.info("  Email sent to: %s", ", ".join(email_config.to_addresses))
+    else:
+        logger.info("  Email not sent (disabled, no key, or error)")
 
     logger.info("Pipeline complete")
 

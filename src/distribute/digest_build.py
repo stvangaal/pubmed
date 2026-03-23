@@ -142,6 +142,12 @@ def build_digest(
         summary_texts: list[str] = []
     else:
         sorted_summaries = _sort_summaries(summaries, config.sort_by)
+
+        # --- Table of contents ---
+        md_toc = "\n".join(f"- {s.title}" for s in sorted_summaries)
+        pt_toc = "\n".join(f"- {s.title}" for s in sorted_summaries)
+
+        # --- Article summaries ---
         md_parts = []
         pt_parts = []
 
@@ -158,8 +164,8 @@ def build_digest(
                 md_parts.append(_render_short_markdown(s, blog_url))
                 pt_parts.append(_render_short_plain(s, blog_url))
 
-        markdown_body = "\n\n".join(md_parts)
-        plain_body = "\n\n".join(pt_parts)
+        markdown_body = md_toc + "\n\n---\n\n" + "\n\n".join(md_parts)
+        plain_body = pt_toc + "\n\n---\n\n" + "\n\n".join(pt_parts)
         summary_texts = md_parts
 
     # --- Assemble full documents ---

@@ -184,6 +184,16 @@ class BlogConfig:
 
 
 @dataclass
+class EmailConfig:
+    """See docs/definitions/email-config.md."""
+
+    enabled: bool = True
+    from_address: str = "onboarding@resend.dev"
+    to_addresses: list[str] = field(default_factory=list)
+    subject: str = "Stroke Literature Weekly — {date_range}"
+
+
+@dataclass
 class BlogPage:
     """See docs/definitions/blog-page.md."""
 

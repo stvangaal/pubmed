@@ -14,6 +14,7 @@ from src.models import (
     OutputConfig,
     BlogConfig,
     BlogTemplatesConfig,
+    EmailConfig,
 )
 
 
@@ -53,6 +54,11 @@ def load_distribute_config(path: str = "config/distribute-config.yaml") -> Distr
         output=OutputConfig(**output_data),
         **data,
     )
+
+
+def load_email_config(path: str = "config/email-config.yaml") -> EmailConfig:
+    data = _load_yaml(path)
+    return EmailConfig(**data)
 
 
 def load_blog_config(path: str = "config/blog-config.yaml") -> BlogConfig:
