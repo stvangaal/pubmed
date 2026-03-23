@@ -5,7 +5,7 @@
 enabled: true
 
 # Sender address (must be verified in Resend, or use onboarding@resend.dev for testing)
-from_address: "onboarding@resend.dev"
+from_address: "strokedigest@vangaal.ca"
 
 # Recipient list
 to_addresses:
