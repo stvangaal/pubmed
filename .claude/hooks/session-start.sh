@@ -17,7 +17,7 @@ DEFS_DIR="$PROJECT_DIR/docs/definitions"
 CONFIG="$PROJECT_DIR/.arboretum.yml"
 
 # Detect current layer (default: 0)
-LAYER=$(sed -n 's/^layer:[[:space:]]*\([0-9]\).*/\1/p' "$CONFIG" 2>/dev/null)
+LAYER=$(sed -n 's/^layer:[[:space:]]*\([0-9]\).*/\1/p' "$CONFIG" 2>/dev/null || true)
 LAYER="${LAYER:-0}"
 
 output=""

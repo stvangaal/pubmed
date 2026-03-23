@@ -210,6 +210,21 @@ echo ""
 echo "Creating contracts.yaml..."
 copy_if_missing "$TEMPLATES_DIR/contracts.yaml" "$TARGET_DIR/contracts.yaml"
 
+# ── Create .arboretum.yml ──────────────────────────────────────────────
+
+echo ""
+echo "Creating .arboretum.yml..."
+if [ -f "$TARGET_DIR/.arboretum.yml" ]; then
+  echo "  exists: .arboretum.yml"
+else
+  cat > "$TARGET_DIR/.arboretum.yml" << 'ARBORETUM'
+# Arboretum project configuration
+# layer: 0 = foundation, 1 = structure, 2 = governance
+layer: 0
+ARBORETUM
+  echo "  created: .arboretum.yml"
+fi
+
 # ── Initialize git if needed ─────────────────────────────────────────
 
 echo ""
