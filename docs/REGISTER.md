@@ -8,8 +8,10 @@
 | search-config | v0 | draft | — | pubmed-query |
 | filter-config | v0 | draft | — | rule-filter, llm-triage |
 | summary-config | v0 | draft | — | llm-summarize |
+| blog-config | v0 | draft | — | blog-publish |
 | distribute-config | v0 | draft | — | digest-build |
-| literature-summary | v0 | draft | — | llm-summarize, digest-build |
+| literature-summary | v0 | draft | — | llm-summarize, blog-publish, digest-build |
+| blog-page | v0 | draft | — | blog-publish |
 | email-digest | v0 | draft | — | digest-build |
 
 ## Spec Index
@@ -20,7 +22,8 @@
 | rule-filter | Phase 1 | ready | src/filter/__init__.py, src/filter/rule_filter.py, tests/filter/__init__.py, tests/filter/test_rule_filter.py | pubmed-record, filter-config |
 | llm-triage | Phase 1 | ready | src/filter/llm_triage.py, tests/filter/test_llm_triage.py, config/prompts/triage-prompt.md, config/filter-config.yaml | pubmed-record, filter-config |
 | llm-summarize | Phase 2 | ready | src/summarize/__init__.py, src/summarize/llm_summarize.py, src/summarize/parse_summary.py, tests/summarize/__init__.py, tests/summarize/test_llm_summarize.py, tests/summarize/test_parse_summary.py, config/summary-config.yaml, config/prompts/summary-prompt.md | pubmed-record, summary-config |
-| digest-build | Phase 2 | ready | src/distribute/__init__.py, src/distribute/digest_build.py, tests/distribute/__init__.py, tests/distribute/test_digest_build.py, config/distribute-config.yaml | literature-summary, distribute-config |
+| digest-build | Phase 2 | ready | src/distribute/__init__.py, src/distribute/digest_build.py, tests/distribute/__init__.py, tests/distribute/test_digest_build.py, config/distribute-config.yaml | literature-summary, distribute-config, blog-page |
+| blog-publish | Phase 3 | draft | src/distribute/blog_publish.py, tests/distribute/test_blog_publish.py, config/blog-config.yaml, config/templates/blog-post.md, config/templates/blog-index.md | literature-summary, blog-config |
 | project-infrastructure | Phase 0 | draft | src/__init__.py, tests/__init__.py, src/models.py, src/config.py, src/pipeline.py, requirements.txt, .gitignore | — |
 
 ## Phase Summary
@@ -30,6 +33,7 @@
 | Phase 0 | 1 | draft |
 | Phase 1 | 3 | ready |
 | Phase 2 | 2 | ready |
+| Phase 3 | 1 | draft |
 
 ## Unowned Code
 <!-- This section should always be empty. If it is not, something
@@ -50,3 +54,6 @@
 ### Phase 2
 5. llm-summarize (needs pubmed-record@filtered)
 6. digest-build (needs literature-summary@summarized)
+
+### Phase 3
+7. blog-publish (needs literature-summary@summarized; digest-build updated to accept blog URLs)

@@ -10,7 +10,7 @@ A weekly automated pipeline that identifies practice-changing stroke publication
 
 **Users:** Stroke clinicians and researchers who receive the weekly digest. Maintainers (1-2) who configure the pipeline. The comms person who forwards the digest to recipients.
 
-**External dependencies:** PubMed E-utilities API (search and fetch), an LLM API (filtering triage and summarization), an SMTP/email service (digest delivery), Google Forms (per-article feedback capture).
+**External dependencies:** PubMed E-utilities API (search and fetch), an LLM API (filtering triage and summarization), GitHub Pages (blog archive), an SMTP/email service (digest delivery, future), Google Forms (per-article feedback capture).
 
 **Autonomy:** Runs weekly via GitHub Actions on a cron schedule. No human intervention required for normal operation.
 
@@ -19,22 +19,47 @@ A weekly automated pipeline that identifies practice-changing stroke publication
 ## Pipeline Diagram
 
 ```
-    PubmedRecord             PubmedRecord            LiteratureSummary        EmailDigest
-     @retrieved               @filtered                @summarized            @assembled
-         │                       │                         │                      │
-         ▼                       ▼                         ▼                      ▼
-┌─────────────────┐    ┌──────────────────┐    ┌────────────────────┐    ┌────────────────┐
-│ SEARCH          │───▶│ FILTER           │───▶│ SUMMARIZE          │───▶│ DISTRIBUTE     │
-│                 │    │                  │    │                    │    │                │
-│ • pubmed-query  │    │ • rule-filter    │    │ • llm-summarize   │    │ • digest-build │
-│                 │    │ • llm-triage     │    │                    │    │                │
-└─────────────────┘    └──────────────────┘    └────────────────────┘    └────────────────┘
-         ▲                      ▲                        ▲                      ▲
-    ┌────┴─────┐          ┌─────┴──────┐          ┌──────┴──────┐        ┌─────┴──────┐
-    │ search   │          │ filter     │          │ summary    │        │ distribute │
-    │ config   │          │ config     │          │ config     │        │ config     │
-    └──────────┘          └────────────┘          └────────────┘        └────────────┘
-      CONFIG                CONFIG                  CONFIG                CONFIG
+  GitHub Actions cron                         GitHub Pages
+  (Monday 8am UTC)                            (auto-deploy)
+         │                                         ▲
+         ▼                                         │
+    PubmedRecord             PubmedRecord            LiteratureSummary
+     @retrieved               @filtered                @summarized
+         │                       │                         │
+         ▼                       ▼                         ▼
+┌─────────────────┐    ┌──────────────────┐    ┌────────────────────┐
+│ SEARCH          │───▶│ FILTER           │───▶│ SUMMARIZE          │──┐
+│                 │    │                  │    │                    │  │
+│ • pubmed-query  │    │ • rule-filter    │    │ • llm-summarize   │  │
+│                 │    │ • llm-triage     │    │                    │  │
+└─────────────────┘    └──────────────────┘    └────────────────────┘  │
+         ▲                      ▲                        ▲             │
+    ┌────┴─────┐          ┌─────┴──────┐          ┌──────┴──────┐     │
+    │ search   │          │ filter     │          │ summary    │     │
+    │ config   │          │ config     │          │ config     │     │
+    └──────────┘          └────────────┘          └────────────┘     │
+      CONFIG                CONFIG                  CONFIG           │
+                                                                     │
+    ┌────────────────────────────────────────────────────────────────┘
+    │
+    │   BlogPage                 EmailDigest
+    │    @published               @assembled
+    │       │                        │
+    ▼       ▼                        ▼
+┌────────────────────────────────────────────────────┐
+│ DISTRIBUTE                                         │
+│                                                    │
+│ • blog-publish ───▶ • digest-build                 │
+│   (push to           (email digest with            │
+│    gh-pages)    blog  blog links)                  │
+│                 URLs                               │
+└────────────────────────────────────────────────────┘
+         ▲                        ▲
+    ┌────┴──────┐           ┌─────┴──────┐
+    │ blog      │           │ distribute │
+    │ config    │           │ config     │
+    └───────────┘           └────────────┘
+      CONFIG                  CONFIG
 ```
 
 ## Stage Descriptions
@@ -44,7 +69,7 @@ A weekly automated pipeline that identifies practice-changing stroke publication
 | **Search** | Query PubMed API for recent stroke literature within the configured date window | Schedule trigger (cron) | PubmedRecord@retrieved | ~40-110/run |
 | **Filter** | Two-pass aggressive filtering: rule-based cut (study type, language, MeSH) then LLM triage for clinical relevance | PubmedRecord@retrieved | PubmedRecord@filtered | ~40-110 → ~30-80 → ~4-10 |
 | **Summarize** | Generate stroke-domain clinical summaries using an LLM with a specialized prompt | PubmedRecord@filtered | LiteratureSummary@summarized | ~4-10/run |
-| **Distribute** | Assemble paste-ready digest text with per-article feedback links | LiteratureSummary@summarized | EmailDigest@assembled | 1 digest/run |
+| **Distribute** | Publish digest to blog (gh-pages) then assemble email digest with blog links | LiteratureSummary@summarized | BlogPage@published, EmailDigest@assembled | 1 blog page + 1 email digest/run |
 
 ## Shared Definitions
 
@@ -54,7 +79,8 @@ A weekly automated pipeline that identifies practice-changing stroke publication
 |------------|-------------|----------|
 | `pubmed-record` | Core domain object: PMID, title, authors, abstract, journal, MeSH terms, article type, publication date | `@retrieved`, `@filtered` |
 | `literature-summary` | One per filtered paper: structured summary (objective, methods, key finding, clinical relevance), feedback link | `@summarized` |
-| `email-digest` | Assembled digest: opening, ordered summaries with feedback links, closing | `@assembled` |
+| `blog-page` | Rendered Jekyll page with per-article anchors, pushed to `gh-pages` | `@published` |
+| `email-digest` | Assembled digest: opening, ordered summaries with blog links, closing | `@assembled` |
 
 ### Config (read by stages, changed by users)
 
@@ -63,7 +89,8 @@ A weekly automated pipeline that identifies practice-changing stroke publication
 | `search-config` | PubMed query terms, MeSH terms, date window, API key | Search |
 | `filter-config` | Include/exclude study types, journal list, language, LLM triage prompt and threshold | Filter |
 | `summary-config` | LLM prompt template, output sections, tone, length constraints | Summarize |
-| `distribute-config` | Digest title, opening/closing text, sort order, output paths | Distribute |
+| `blog-config` | Site title, base URL, publish toggle, template paths | Distribute (blog-publish) |
+| `distribute-config` | Digest title, opening/closing text, sort order, output paths | Distribute (digest-build) |
 | (feedback form config lives in `summary-config`, where per-article URLs are constructed) | | |
 
 ## Essentials
@@ -113,6 +140,8 @@ A weekly automated pipeline that identifies practice-changing stroke publication
 | A4 | GitHub Actions for scheduling | Local cron; AWS Lambda; GCP Cloud Run | Free for public repos, zero infra for fork users, built-in secrets management. Acceptable trade-off: 6-hour minimum schedule granularity (weekly is fine). | 2026-03-23 |
 | A5 | Paste-ready digest in v1 (comms person copies into email) | Automated SMTP; API-based email service | Removes email deliverability complexity from v1. Comms person handles distribution using their existing tooling. Automated sending deferred to future phase. | 2026-03-23 |
 | A6 | Google Form with pre-filled PMID for feedback | Custom endpoint; GitHub Issues; email reply | Zero infrastructure. Pre-filled PMID links feedback to specific articles. Responses land in a Google Sheet for analysis. Can upgrade later. | 2026-03-23 |
+| A7 | GitHub Pages for blog archive | Ghost; WordPress; Notion | Already on GitHub Actions — blog publish is a git push to `gh-pages`. Free, markdown-native, zero additional infrastructure. Jekyll is built-in. | 2026-03-23 |
+| A8 | User-editable blog templates in config/ | Hardcoded in Python; Jinja2 | Templates as config files preserve the code-vs-config separation. Simple placeholder substitution avoids adding Jinja2 as a dependency. | 2026-03-23 |
 
 ## Phase Map
 
@@ -121,6 +150,7 @@ A weekly automated pipeline that identifies practice-changing stroke publication
 | Phase 0 | project-infrastructure, test-infrastructure | Bootstrap project structure, CI, and test framework |
 | Phase 1 | pubmed-query, rule-filter, llm-triage | Search and filter stages — the data acquisition half of the pipeline |
 | Phase 2 | llm-summarize, digest-build | Summarize and distribute stages — the output half |
+| Phase 3 | blog-publish | Blog archive on GitHub Pages — permanent web reference for digests |
 | Future | email-send (deferred) | Automated email delivery — not in v1 scope |
 
 ## Dependency Graph
@@ -138,4 +168,7 @@ Phase 1:
 Phase 2:
   6. llm-summarize (needs pubmed-record@filtered)
   7. digest-build (needs literature-summary@summarized)
+
+Phase 3:
+  8. blog-publish (needs literature-summary@summarized; digest-build updated to accept blog URLs)
 ```

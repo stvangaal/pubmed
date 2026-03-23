@@ -5,9 +5,9 @@ A weekly automated pipeline that identifies practice-changing stroke publication
 ## What it does
 
 ```
-PubMed API → Search → Filter → Summarize → Digest
-  ~50/week    rule-based   LLM triage    LLM summary    paste-ready
-              + LLM        (~5-10/week)  (hybrid format) email text
+PubMed API → Search → Filter → Summarize → Blog + Digest
+  ~50/week    rule-based   LLM triage    LLM summary    gh-pages archive
+              + LLM        (~5-10/week)  (hybrid format) + email text
 ```
 
 Every week, the pipeline:
@@ -15,7 +15,8 @@ Every week, the pipeline:
 1. **Searches** PubMed for stroke literature indexed in the past 7 days
 2. **Filters** aggressively — rule-based exclusions (animal studies, non-English, case reports), then LLM triage scoring for clinical relevance
 3. **Summarizes** each selected article with a stroke-domain LLM prompt that produces a structured clinical summary
-4. **Assembles** a digest with per-article feedback links, ready to paste into an email
+4. **Publishes** each digest as a permanent blog page on GitHub Pages
+5. **Assembles** an email digest with links to the blog page, ready to paste into an email
 
 ## Sample output
 
@@ -59,7 +60,8 @@ Edit the YAML files in `config/` to customize the pipeline for your domain:
 | `config/search-config.yaml` | PubMed query (MeSH terms, date window) |
 | `config/filter-config.yaml` | Rule-based filters + LLM triage (model, threshold, max articles) |
 | `config/summary-config.yaml` | Summary format (model, prompt, subdomain tags, feedback form) |
-| `config/distribute-config.yaml` | Digest template (opening, closing, sort order, output paths) |
+| `config/blog-config.yaml` | Blog publishing (site URL, publish toggle, template paths) |
+| `config/distribute-config.yaml` | Email digest template (opening, closing, sort order, output paths) |
 
 LLM prompts are in `config/prompts/` and can be edited independently:
 
@@ -85,6 +87,8 @@ The default configuration targets **stroke medicine**. To adapt for a different 
 3. Edit `config/prompts/triage-prompt.md` — replace stroke-specific scoring guidance with your domain's criteria for "practice-changing"
 4. Edit `config/prompts/summary-prompt.md` — update the subdomain tags and any domain-specific instructions
 
+5. Edit `config/blog-config.yaml` — update `base_url` and `site_title` for your site
+
 No source code changes required.
 
 ## Project structure
@@ -95,15 +99,19 @@ pubmed/
     prompts/
       triage-prompt.md       # LLM triage scoring prompt
       summary-prompt.md      # LLM summary generation prompt
+    templates/
+      blog-post.md           # Blog page template (editable)
+      blog-index.md          # Blog index page template (editable)
     search-config.yaml
     filter-config.yaml
     summary-config.yaml
+    blog-config.yaml         # Blog publishing settings
     distribute-config.yaml
   src/                       # Pipeline source code
     search/                  # Stage 1: PubMed API query
     filter/                  # Stage 2: Rule filter + LLM triage
     summarize/               # Stage 3: LLM summarization
-    distribute/              # Stage 4: Digest assembly
+    distribute/              # Stage 4: Blog publish + email digest
     models.py                # Shared data models
     config.py                # Config loader
     pipeline.py              # Orchestrator
@@ -135,15 +143,26 @@ name: Weekly Stroke Digest
 on:
   schedule:
     - cron: '0 8 * * 1'  # Every Monday at 8am UTC
+  workflow_dispatch:       # Manual trigger for testing
+
+permissions:
+  contents: write          # Needed to push blog pages to gh-pages
+
 jobs:
   digest:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # Full history needed for gh-pages push
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - run: pip install -r requirements.txt
+      - name: Configure git for blog publish
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
       - run: python3 -m src.pipeline
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -152,6 +171,18 @@ jobs:
           name: digest
           path: output/
 ```
+
+The pipeline publishes a blog page to GitHub Pages (via the `gh-pages` branch) and produces a paste-ready email digest with links to the blog. GitHub Pages auto-deploys within ~60 seconds of the push.
+
+## Blog archive
+
+Each weekly digest is published as a permanent page at:
+
+```
+https://<username>.github.io/<repo>/digests/<date>/
+```
+
+Customize the blog page and index templates in `config/templates/`. Edit `config/blog-config.yaml` to set the site URL, title, and publishing behaviour. Set `publish: false` to skip blog publishing during local development.
 
 ## Cost
 
