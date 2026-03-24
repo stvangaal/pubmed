@@ -1,6 +1,6 @@
 ---
 name: stroke-migration
-status: draft
+status: implemented
 owner: infrastructure
 disposable: true
 owns:
