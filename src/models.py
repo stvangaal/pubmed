@@ -108,6 +108,7 @@ class LLMTriageConfig:
     max_articles: int = 10
     use_prompt_caching: bool = True
     triage_prompt_file: str = "config/prompts/triage-prompt.md"
+    seen_pmids_file: str = "data/seen-pmids.json"
 
 
 @dataclass

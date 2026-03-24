@@ -1,0 +1,69 @@
+# owner: llm-triage
+# Domain-scoped filter configuration.
+# Copy to config/domains/<domain>/filter-config.yaml and fill in TODO fields.
+config_version: 1
+
+rule_filter:
+  require_abstract: true
+  require_language: "eng"
+
+  # MeSH terms that cause an article to be excluded regardless of other criteria.
+  # Keep the animal/in vitro exclusions for all clinical domains.
+  exclude_mesh_terms:
+    - "animals"
+    - "mice"
+    - "rats"
+    - "disease models, animal"
+    - "in vitro techniques"
+    # TODO: add domain-specific exclusions (e.g. "pediatrics" if you only want adults)
+
+  # Only these article types are passed to LLM triage.
+  include_article_types:
+    - "randomized controlled trial"
+    - "meta-analysis"
+    - "systematic review"
+    - "practice guideline"
+    - "guideline"
+    - "clinical trial"
+    - "clinical trial, phase iii"
+    - "clinical trial, phase iv"
+    - "multicenter study"
+    - "observational study"
+    - "comparative study"
+    # TODO: add or remove types based on domain conventions
+
+  # Article types that are always excluded.
+  exclude_article_types:
+    - "case reports"
+    - "letter"
+    - "editorial"
+    - "comment"
+    - "news"
+    - "biography"
+    - "historical article"
+    - "published erratum"
+    - "retraction of publication"
+    - "retracted publication"
+
+llm_triage:
+  model: "claude-sonnet-4-6"
+  max_tokens: 150
+  # TODO: Adjust threshold for this domain's precision/recall trade-off.
+  # 0.70 is a reasonable starting point for clinical domains.
+  score_threshold: 0.70
+  # Maximum articles forwarded to summarization per run.
+  max_articles: 10
+  use_prompt_caching: true
+  # Path to the domain-specific triage prompt.
+  triage_prompt_file: "config/domains/_template/prompts/triage-prompt.md"
+  # Per-domain dedup file — keeps stroke and neurology histories separate.
+  seen_pmids_file: "data/domains/_template/seen-pmids.json"
+
+# TODO: List journals that are high-signal for this domain (lowercase).
+# Priority journals are surfaced first when capping at max_articles.
+priority_journals:
+  - "the new england journal of medicine"
+  - "the lancet"
+  - "jama"
+  - "bmj (clinical research ed.)"
+  # TODO: add domain-specific journals

@@ -1,4 +1,4 @@
-# PubMed Stroke Monitor — Architecture
+# PubMed Clinical Literature Monitor — Architecture
 
 ## Architecture Owner
 
@@ -6,9 +6,9 @@ The project maintainer (currently @stvangaal). Final authority over shared defin
 
 ## Overview
 
-A weekly automated pipeline that identifies practice-changing stroke publications from PubMed, summarizes them using an LLM, and delivers a curated digest for distribution to clinical audiences.
+A weekly automated pipeline that identifies practice-changing clinical publications from PubMed across configurable domains (stroke, neurology, etc.), summarizes them using an LLM, and delivers a curated digest for distribution to clinical audiences. Each domain is an isolated config package under `config/domains/{name}/` with its own search terms, filter rules, prompts, and output paths.
 
-**Users:** Stroke clinicians and researchers who receive the weekly digest. Maintainers (1-2) who configure the pipeline. The comms person who forwards the digest to recipients.
+**Users:** Clinicians and researchers who receive domain-specific weekly digests. Domain operators (1-2 per domain) who configure search terms, filter rules, and prompts. Maintainers who manage the pipeline infrastructure.
 
 **External dependencies:** PubMed E-utilities API (search and fetch), an LLM API (filtering triage and summarization), GitHub Pages (blog archive), an SMTP/email service (digest delivery, future), Google Forms (per-article feedback capture).
 
@@ -19,8 +19,24 @@ A weekly automated pipeline that identifies practice-changing stroke publication
 ## Pipeline Diagram
 
 ```
+  --domain stroke
+         │
+         ▼
+  ┌──────────────────┐
+  │ Domain Config    │──── config/domains/stroke/
+  │ Resolver         │     ├── domain.yaml (schema version)
+  └──────┬───────────┘     ├── search-config.yaml
+         │                 ├── filter-config.yaml
+         │                 ├── summary-config.yaml
+         │                 ├── distribute-config.yaml
+         │                 ├── blog-config.yaml
+         │                 ├── email-config.yaml
+         │                 └── prompts/
+         ▼
+   (feeds all CONFIG boxes below)
+
   GitHub Actions cron                         GitHub Pages
-  (Monday 8am UTC)                            (auto-deploy)
+  (Monday noon ET / 16:00 UTC)                (auto-deploy)
          │                                         ▲
          ▼                                         │
     PubmedRecord             PubmedRecord            LiteratureSummary
@@ -66,9 +82,9 @@ A weekly automated pipeline that identifies practice-changing stroke publication
 
 | Stage | Purpose | Input | Output | Volume |
 |-------|---------|-------|--------|--------|
-| **Search** | Query PubMed API for recent stroke literature within the configured date window | Schedule trigger (cron) | PubmedRecord@retrieved | ~40-110/run |
+| **Search** | Query PubMed API for recent literature in the configured domain's search terms | Schedule trigger (cron) | PubmedRecord@retrieved | ~40-110/run |
 | **Filter** | Two-pass aggressive filtering: rule-based cut (study type, language, MeSH) then LLM triage for clinical relevance | PubmedRecord@retrieved | PubmedRecord@filtered | ~40-110 → ~30-80 → ~4-10 |
-| **Summarize** | Generate stroke-domain clinical summaries using an LLM with a specialized prompt | PubmedRecord@filtered | LiteratureSummary@summarized | ~4-10/run |
+| **Summarize** | Generate domain-specific clinical summaries using an LLM with a specialized prompt | PubmedRecord@filtered | LiteratureSummary@summarized | ~4-10/run |
 | **Distribute** | Publish digest to blog (gh-pages) then assemble email digest with blog links | LiteratureSummary@summarized | BlogPage@published, EmailDigest@assembled | 1 blog page + 1 email digest/run |
 
 ## Shared Definitions
@@ -84,13 +100,16 @@ A weekly automated pipeline that identifies practice-changing stroke publication
 
 ### Config (read by stages, changed by users)
 
+All config definitions can be **domain-scoped**: when `--domain` is specified, configs load from `config/domains/{domain}/` instead of `config/`. See decision A10.
+
 | Definition | Description | Used by |
 |------------|-------------|---------|
 | `search-config` | PubMed query terms, MeSH terms, date window, API key | Search |
-| `filter-config` | Include/exclude study types, journal list, language, LLM triage prompt and threshold | Filter |
-| `summary-config` | LLM prompt template, output sections, tone, length constraints | Summarize |
-| `blog-config` | Site title, base URL, publish toggle, template paths | Distribute (blog-publish) |
+| `filter-config` | Include/exclude study types, journal list, language, LLM triage prompt and threshold, per-domain dedup path | Filter |
+| `summary-config` | LLM prompt template, output sections, tone, length constraints, subdomain taxonomy | Summarize |
+| `blog-config` | Site title, base URL, publish toggle, template paths (global templates, domain-overridable) | Distribute (blog-publish) |
 | `distribute-config` | Digest title, opening/closing text, sort order, output paths | Distribute (digest-build) |
+| `email-config` | Sender, recipients, subject template | Distribute (email-send) |
 | (feedback form config lives in `summary-config`, where per-article URLs are constructed) | | |
 
 ## Essentials
@@ -98,7 +117,7 @@ A weekly automated pipeline that identifies practice-changing stroke publication
 | Cost | Essential | Detail |
 |------|-----------|--------|
 | **HIGH** | Core domain object (`pubmed-record`) | Its shape is the pipeline's spine — every stage reads or transforms it. Get the fields right before writing stage code. |
-| **HIGH** | Summarization prompt | The LLM prompt for stroke-domain summaries IS the product. Quality here determines whether the digest is useful to clinicians. |
+| **HIGH** | Summarization prompt | The LLM prompt for domain-specific summaries IS the product. Quality here determines whether the digest is useful to clinicians. Each domain needs its own prompt — this is the primary onboarding cost. |
 | **MODERATE** | Filter calibration | The rule + LLM triage boundary. Too aggressive = miss practice-changing papers. Too permissive = noise. Target: ~5 articles/week. |
 | **MODERATE** | Config surface design | Users configure via YAML without seeing internals. The config schema is a user-facing API — changing it later breaks forks. |
 | **EASY TO MISS** | Google Form feedback loop | Each article needs a unique pre-filled URL (`?entry.FIELD_ID=PMID`). Must be part of the summary template, not an afterthought. |
@@ -124,11 +143,23 @@ A weekly automated pipeline that identifies practice-changing stroke publication
 - **Question:** Can the two-pass filter hit ~5/week without missing papers you'd hand-pick?
 - **Success:** Filter output matches manual picks with ≤1 false negative.
 
-## Scope Fence (v1)
+## Scope Fence
 
-**In scope:** PubMed abstract-only pipeline, GitHub Actions scheduling, GitHub Pages blog archive, single recipient (comms person), YAML configuration, Google Form feedback, public repo.
+**In scope:** PubMed abstract-only pipeline, GitHub Actions scheduling, GitHub Pages blog archive, multi-domain config packages, YAML configuration, Google Form feedback, automated email delivery via Resend, public repo.
 
-**Out of scope:** Interactive web UI, historical backfill, full-text PDF analysis, direct mass email, multi-user accounts.
+**Out of scope (planned):** Tag-based digest personalization ([#4](https://github.com/stvangaal/pubmed/issues/4)), domain-specific web distribution via WordPress or other CMS ([#5](https://github.com/stvangaal/pubmed/issues/5)).
+
+**Out of scope (no plans):** Interactive web UI, historical backfill, full-text PDF analysis, multi-user accounts.
+
+## Extension Points
+
+Architecture decisions for the current scope deliberately leave room for planned future work:
+
+| Extension | Hook Point | Future Story |
+|-----------|-----------|--------------|
+| Tag-based personalization | `summary-config.subdomain_options` defines the tag taxonomy per domain. `digest-build` can filter summaries by subscriber tags before rendering. `LiteratureSummary.subdomain` evolves to `tags: list[str]`. | [#4](https://github.com/stvangaal/pubmed/issues/4) |
+| External web distribution | `blog-config` gains a `target` field to select the distribution backend (GitHub Pages, WordPress, custom). `blog_publish.py` dispatches to a distribution adapter. | [#5](https://github.com/stvangaal/pubmed/issues/5) |
+| Subscriber data source | `email-config.to_addresses` is currently a static list. Future: `source` field selects static / site API / CSV for subscriber data. | [#5](https://github.com/stvangaal/pubmed/issues/5) |
 
 ## Decisions and Rationale
 
@@ -143,6 +174,7 @@ A weekly automated pipeline that identifies practice-changing stroke publication
 | A7 | GitHub Pages for blog archive | Ghost; WordPress; Notion | Already on GitHub Actions — blog publish is a git push to `gh-pages`. Free, markdown-native, zero additional infrastructure. Jekyll is built-in. | 2026-03-23 |
 | A8 | User-editable blog templates in config/ | Hardcoded in Python; Jinja2 | Templates as config files preserve the code-vs-config separation. Simple placeholder substitution avoids adding Jinja2 as a dependency. | 2026-03-23 |
 | A9 | Resend for email delivery | SendGrid; AWS SES; SMTP | Simplest API, generous free tier (100 emails/day), single sender email verification. No DNS changes needed to start with test sender. | 2026-03-23 |
+| A10 | Domain-scoped config: each domain is a directory under `config/domains/{name}/` with all 6 config YAMLs + prompts, selected via `--domain` CLI arg. Schema versioned via `domain.yaml`. One cron run per domain (matrix strategy). | Single config with domain prefixes; env var switching; database-backed config | Directory-per-domain gives full isolation. Each domain is self-contained and copyable. `_template/` makes onboarding mechanical — no code changes needed to add a domain. Schema versioning is advisory (WARNING log, non-fatal). Global settings (API keys, rate limits, blog templates) remain shared. | 2026-03-24 |
 
 ## Phase Map
 
@@ -152,6 +184,7 @@ A weekly automated pipeline that identifies practice-changing stroke publication
 | Phase 1 | pubmed-query, rule-filter, llm-triage | Search and filter stages — the data acquisition half of the pipeline |
 | Phase 2 | llm-summarize, digest-build | Summarize and distribute stages — the output half |
 | Phase 3 | blog-publish, email-send | Blog archive on GitHub Pages + automated email delivery via Resend |
+| Phase 4 | domain-config, stroke-migration (disposable) | Multi-domain infrastructure — domain-scoped config packages, `--domain` CLI, schema versioning, migration of stroke from flat to domain layout |
 
 ## Dependency Graph
 
@@ -172,4 +205,8 @@ Phase 2:
 Phase 3:
   8. blog-publish (needs literature-summary@summarized; digest-build updated to accept blog URLs)
   9. email-send (needs email-digest@assembled)
+
+Phase 4:
+  10. domain-config (depends on project-infrastructure for config.py and pipeline.py)
+  11. stroke-migration [disposable] (depends on domain-config for the target layout)
 ```

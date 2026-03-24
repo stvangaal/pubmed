@@ -75,6 +75,9 @@ llm_triage:
   # Path to the triage prompt file (system prompt for LLM scoring)
   triage_prompt_file: config/prompts/triage-prompt.md
 
+  # Path to per-domain dedup history (tracks previously seen PMIDs)
+  seen_pmids_file: data/seen-pmids.json
+
 # Journals considered high-tier for scoring boost (lowercase)
 priority_journals:
   - the new england journal of medicine
@@ -109,6 +112,7 @@ class LLMTriageConfig:
     max_articles: int
     use_prompt_caching: bool
     triage_prompt_file: str
+    seen_pmids_file: str       # Path to per-domain dedup history (default: "data/seen-pmids.json")
 
 @dataclass
 class FilterConfig:
@@ -116,6 +120,10 @@ class FilterConfig:
     llm_triage: LLMTriageConfig
     priority_journals: list[str]
 ```
+
+## Domain Scoping
+
+When `--domain` is specified, this config is loaded from `config/domains/{domain}/filter-config.yaml` instead of `config/filter-config.yaml`. The schema is identical in both layouts. Domain-scoped configs should set `llm_triage.seen_pmids_file` to a per-domain path (e.g., `data/domains/stroke/seen-pmids.json`) to keep dedup history isolated. See architecture decision A10.
 
 ## Constraints
 
@@ -132,3 +140,4 @@ class FilterConfig:
 | Date | Version | Change | Affected Specs |
 |------|---------|--------|----------------|
 | 2026-03-23 | v0 | Initial draft from filter spike | — |
+| 2026-03-24 | v0 | Added `seen_pmids_file` to `LLMTriageConfig` for per-domain dedup | llm-triage |

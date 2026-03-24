@@ -22,6 +22,10 @@ class SummaryConfig:
     feedback_pmid_field: str     # Google Form field ID for PMID pre-fill parameter
 ```
 
+## Domain Scoping
+
+When `--domain` is specified, this config is loaded from `config/domains/{domain}/summary-config.yaml` instead of `config/summary-config.yaml`. The schema is identical in both layouts. Each domain defines its own `subdomain_options` taxonomy and prompt template. See architecture decision A10.
+
 ## Constraints
 
 - `prompt_template` must contain all six placeholders: `{title}`, `{journal}`, `{authors}`, `{pmid}`, `{article_types}`, `{abstract}`

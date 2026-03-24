@@ -1,0 +1,16 @@
+# owner: stroke-migration
+# Stroke domain email configuration.
+config_version: 1
+
+# Whether to actually send emails (set false for local dev / dry runs)
+enabled: true
+
+# Sender address (must be verified in Resend)
+from_address: "strokedigest@vangaal.ca"
+
+# Recipient list
+to_addresses:
+  - "svangaal@gmail.com"
+
+# Email subject line — supports {date_range} and {article_count} placeholders
+subject: "Stroke Literature Weekly — {date_range}"

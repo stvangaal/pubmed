@@ -1,0 +1,32 @@
+# owner: pubmed-query
+# Domain-scoped search configuration.
+config_version: 1
+# Copy this file to config/domains/<domain>/search-config.yaml and fill in TODO fields.
+
+# TODO: List the MeSH terms that define this domain's search scope.
+# Each term is ANDed in a single PubMed query: ("term1"[MeSH] OR "term2"[MeSH] OR ...).
+# Use MeSH browser (https://www.ncbi.nlm.nih.gov/mesh) to find canonical term names.
+mesh_terms:
+  - "TODO: primary mesh term"
+  # - "TODO: secondary mesh term"
+
+# TODO: Free-text terms added to the query with OR (not restricted to MeSH field).
+# Use sparingly — these broaden recall and may increase noise.
+additional_terms: []
+  # - "TODO: free-text term"
+
+# How many days back to search (default: 7 for a weekly digest).
+date_window_days: 7
+
+# PubMed API key (optional — increases rate limit from 3 to 10 req/s).
+# Leave unset here; inject via NCBI_API_KEY env var at runtime instead.
+# api_key: ""
+
+# Maximum records to retrieve per run.
+retmax: 200
+
+# Skip articles without an abstract.
+require_abstract: true
+
+# Delay between PubMed API calls in seconds (0.4 = safe default without API key).
+rate_limit_delay: 0.4

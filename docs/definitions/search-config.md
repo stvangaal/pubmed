@@ -23,6 +23,10 @@ class SearchConfig:
     rate_limit_delay: float      # Seconds between API calls (default 0.4)
 ```
 
+## Domain Scoping
+
+When `--domain` is specified, this config is loaded from `config/domains/{domain}/search-config.yaml` instead of `config/search-config.yaml`. The schema is identical in both layouts. See architecture decision A10.
+
 ## Constraints
 
 - `mesh_terms` must have at least one entry

@@ -1,0 +1,8 @@
+# owner: project-infrastructure
+# Domain manifest — one per domain directory.
+# schema_version tracks the domain.yaml manifest format itself.
+# Individual config files carry their own config_version field.
+#
+# See config/domains/CHANGELOG.md for the full migration history.
+
+schema_version: "1"
