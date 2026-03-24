@@ -1,6 +1,6 @@
 ---
 name: domain-config
-status: draft
+status: implemented
 owner: infrastructure
 owns:
   - config/domains/_template/domain.yaml
