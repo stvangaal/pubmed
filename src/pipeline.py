@@ -1,6 +1,7 @@
 # owner: project-infrastructure
 """Pipeline orchestrator — runs all stages end-to-end."""
 
+import argparse
 import logging
 import sys
 from datetime import datetime, timedelta
@@ -38,15 +39,25 @@ def _make_date_range(run_date: datetime, window_days: int) -> str:
 def run():
     """Run the full pipeline: search → filter → summarize → blog → digest."""
 
-    logger.info("Starting PubMed Stroke Monitor pipeline")
+    parser = argparse.ArgumentParser(description="PubMed Monitor pipeline")
+    parser.add_argument(
+        "--domain",
+        default=None,
+        help="Domain config profile (e.g. stroke, neurology). "
+             "Omit to use the legacy flat config/ layout.",
+    )
+    args = parser.parse_args()
+    domain = args.domain
+
+    logger.info("Starting PubMed Monitor pipeline (domain: %s)", domain or "legacy")
 
     # --- Load configs ---
-    search_config = load_search_config()
-    filter_config = load_filter_config()
-    summary_config = load_summary_config()
-    blog_config = load_blog_config()
-    distribute_config = load_distribute_config()
-    email_config = load_email_config()
+    search_config = load_search_config(domain=domain)
+    filter_config = load_filter_config(domain=domain)
+    summary_config = load_summary_config(domain=domain)
+    blog_config = load_blog_config(domain=domain)
+    distribute_config = load_distribute_config(domain=domain)
+    email_config = load_email_config(domain=domain)
 
     run_date = datetime.now()
     date_range = _make_date_range(run_date, search_config.date_window_days)
@@ -76,7 +87,11 @@ def run():
 
     # --- Stage 2b: Filter (LLM triage) ---
     logger.info("Stage 2b: LLM triage")
-    above, below = llm_triage(passed, filter_config.llm_triage)
+    above, below = llm_triage(
+        passed,
+        filter_config.llm_triage,
+        seen_pmids_path=filter_config.llm_triage.seen_pmids_file,
+    )
     logger.info(f"  {len(above)} above threshold, {len(below)} below")
 
     # --- Stage 3: Summarize ---

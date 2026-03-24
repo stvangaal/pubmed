@@ -1,0 +1,16 @@
+# owner: email-send
+# Domain-scoped email configuration.
+# Copy to config/domains/<domain>/email-config.yaml and fill in TODO fields.
+
+# Whether to actually send emails (set false for local dev / dry runs).
+enabled: true
+
+# TODO: Sender address (must be verified in Resend, or use onboarding@resend.dev for testing).
+from_address: "TODO: digest@yourdomain.com"
+
+# TODO: Recipient list for this domain's digest.
+to_addresses:
+  - "TODO: recipient@example.com"
+
+# TODO: Email subject line. Supports {date_range} and {article_count} placeholders.
+subject: "TODO: Domain Literature Weekly — {date_range}"

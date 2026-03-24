@@ -74,7 +74,7 @@ while IFS='|' read -r _ spec _ status owns _; do
       fi
     fi
   done
-done < <(grep -E '^\|.*\.spec\.md' "$REGISTER" 2>/dev/null || true)
+done < <(grep -E '^\| [a-z]' "$REGISTER" 2>/dev/null || true)
 
 # ── Build context output ─────────────────────────────────────────────
 

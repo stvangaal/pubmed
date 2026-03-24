@@ -1,0 +1,23 @@
+# owner: llm-summarize
+# Domain-scoped summarization configuration.
+# Copy to config/domains/<domain>/summary-config.yaml and fill in TODO fields.
+
+# Path to the domain-specific summary prompt.
+prompt_template_file: config/domains/_template/prompts/summary-prompt.md
+
+model: claude-sonnet-4-6
+max_tokens: 600
+
+# TODO: Define the clinical subdomains for this domain.
+# These are the taxonomy options the LLM picks from when categorizing an article.
+# Keep to 4–8 options; too many dilutes category signal.
+subdomain_options:
+  - "TODO: Subdomain 1"
+  - "TODO: Subdomain 2"
+  - "TODO: Subdomain 3"
+  - "TODO: Subdomain 4"
+
+# TODO: Google Form or similar URL for per-article clinician feedback.
+# Leave blank to disable feedback links.
+feedback_form_url: ""
+feedback_pmid_field: ""
