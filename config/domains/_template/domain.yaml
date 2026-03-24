@@ -1,0 +1,14 @@
+# owner: project-infrastructure
+# Domain manifest — one per domain directory.
+# The pipeline reads this file to verify the config schema version before loading
+# any other configs. If schema_version doesn't match the pipeline's expected version,
+# a warning is logged and the run continues (non-fatal).
+#
+# When to bump schema_version:
+#   - A new required field was added to a config model with no safe default
+#   - An existing field was renamed or removed
+#   - A file path convention changed (e.g. seen_pmids_file, triage_prompt_file)
+#
+# See config/domains/CHANGELOG.md for the full migration history.
+
+schema_version: "1"

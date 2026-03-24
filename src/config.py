@@ -1,8 +1,15 @@
 # owner: project-infrastructure
 """Load pipeline configuration from YAML files."""
 
+import logging
 import yaml
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+# Bump this when any domain config schema change requires operator action.
+# See config/domains/CHANGELOG.md for migration notes.
+CURRENT_DOMAIN_SCHEMA_VERSION = "1"
 
 from src.models import (
     SearchConfig,
@@ -16,6 +23,33 @@ from src.models import (
     BlogTemplatesConfig,
     EmailConfig,
 )
+
+
+def check_domain_schema(domain: str) -> None:
+    """Warn if the domain's schema_version doesn't match CURRENT_DOMAIN_SCHEMA_VERSION.
+
+    Non-fatal — the pipeline continues, but operators should migrate the config.
+    See config/domains/CHANGELOG.md for migration notes.
+    """
+    manifest_path = f"config/domains/{domain}/domain.yaml"
+    if not Path(manifest_path).exists():
+        logger.warning(
+            "Domain '%s' has no domain.yaml — schema version unknown. "
+            "Copy config/domains/_template/domain.yaml into your domain directory.",
+            domain,
+        )
+        return
+
+    data = _load_yaml(manifest_path)
+    found = str(data.get("schema_version", "")).strip()
+    if found != CURRENT_DOMAIN_SCHEMA_VERSION:
+        logger.warning(
+            "Domain '%s' config schema_version '%s' != current '%s'. "
+            "See config/domains/CHANGELOG.md for migration steps.",
+            domain,
+            found or "(missing)",
+            CURRENT_DOMAIN_SCHEMA_VERSION,
+        )
 
 
 def _load_yaml(path: str) -> dict:

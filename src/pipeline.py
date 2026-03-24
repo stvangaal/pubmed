@@ -7,6 +7,7 @@ import sys
 from datetime import datetime, timedelta
 
 from src.config import (
+    check_domain_schema,
     load_search_config,
     load_filter_config,
     load_summary_config,
@@ -50,6 +51,10 @@ def run():
     domain = args.domain
 
     logger.info("Starting PubMed Monitor pipeline (domain: %s)", domain or "legacy")
+
+    # --- Schema version check ---
+    if domain:
+        check_domain_schema(domain)
 
     # --- Load configs ---
     search_config = load_search_config(domain=domain)
