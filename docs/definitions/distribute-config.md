@@ -65,6 +65,10 @@ class DistributeConfig:
     output: OutputConfig
 ```
 
+## Domain Scoping
+
+When `--domain` is specified, this config is loaded from `config/domains/{domain}/distribute-config.yaml` instead of `config/distribute-config.yaml`. The schema is identical in both layouts. Domain-scoped configs should set output paths under `output/domains/{domain}/`. See architecture decision A10.
+
 ## Constraints
 
 - `opening` may contain `{date_range}` and `{article_count}` placeholders — both are optional

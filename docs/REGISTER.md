@@ -27,6 +27,8 @@
 | blog-publish | Phase 3 | ready | src/distribute/blog_publish.py, tests/distribute/test_blog_publish.py, config/blog-config.yaml, config/templates/blog-post.md, config/templates/blog-index.md | literature-summary, blog-config |
 | email-send | Phase 3 | ready | src/distribute/email_send.py, tests/distribute/test_email_send.py, config/email-config.yaml | email-digest, email-config |
 | project-infrastructure | Phase 0 | draft | src/__init__.py, tests/__init__.py, src/models.py, src/config.py, src/pipeline.py, requirements.txt, .gitignore | — |
+| domain-config | Phase 4 | draft | config/domains/_template/domain.yaml, config/domains/_template/search-config.yaml, config/domains/_template/filter-config.yaml, config/domains/_template/summary-config.yaml, config/domains/_template/distribute-config.yaml, config/domains/_template/blog-config.yaml, config/domains/_template/email-config.yaml, config/domains/_template/prompts/triage-prompt.md, config/domains/_template/prompts/summary-prompt.md, config/domains/CHANGELOG.md, tests/test_domain_config.py | — |
+| stroke-migration | Phase 4 | draft | config/domains/stroke/domain.yaml, config/domains/stroke/search-config.yaml, config/domains/stroke/filter-config.yaml, config/domains/stroke/summary-config.yaml, config/domains/stroke/distribute-config.yaml, config/domains/stroke/blog-config.yaml, config/domains/stroke/email-config.yaml, config/domains/stroke/prompts/triage-prompt.md, config/domains/stroke/prompts/summary-prompt.md | domain-config |
 
 ## Phase Summary
 
@@ -36,6 +38,7 @@
 | Phase 1 | 3 | ready |
 | Phase 2 | 2 | ready |
 | Phase 3 | 2 | ready |
+| Phase 4 | 2 | draft |
 
 ## Unowned Code
 <!-- This section should always be empty. If it is not, something
@@ -60,3 +63,7 @@
 ### Phase 3
 7. blog-publish (needs literature-summary@summarized; digest-build updated to accept blog URLs)
 8. email-send (needs email-digest@assembled)
+
+### Phase 4
+9. domain-config (depends on project-infrastructure for config.py and pipeline.py)
+10. stroke-migration [disposable] (depends on domain-config for the target layout)

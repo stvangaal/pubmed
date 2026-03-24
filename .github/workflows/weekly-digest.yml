@@ -1,5 +1,5 @@
 # owner: project-infrastructure
-name: Weekly Stroke Digest
+name: Weekly Digest
 
 on:
   schedule:
@@ -12,6 +12,10 @@ permissions:
 jobs:
   digest:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        domain: [stroke]
+      fail-fast: false  # One domain failing shouldn't block others
     steps:
       - uses: actions/checkout@v5
         with:
@@ -33,10 +37,10 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-        run: python3 -m src.pipeline
+        run: python3 -m src.pipeline --domain ${{ matrix.domain }}
 
       - name: Upload digest artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: digest-${{ github.run_id }}
-          path: output/
+          name: digest-${{ matrix.domain }}-${{ github.run_id }}
+          path: output/domains/${{ matrix.domain }}/

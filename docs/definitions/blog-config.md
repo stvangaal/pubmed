@@ -60,6 +60,10 @@ class BlogConfig:
     templates: BlogTemplatesConfig
 ```
 
+## Domain Scoping
+
+When `--domain` is specified, this config is loaded from `config/domains/{domain}/blog-config.yaml` instead of `config/blog-config.yaml`. The schema is identical in both layouts. Domain-scoped configs should set `digests_dir` to a per-domain path (e.g., `digests/stroke`). Blog templates in `config/templates/` are global by default; per-domain overrides are possible via `templates.post` and `templates.index`. See architecture decision A10.
+
 ## Constraints
 
 - `base_url` must not end with a trailing slash

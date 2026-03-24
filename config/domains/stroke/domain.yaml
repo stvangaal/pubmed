@@ -1,0 +1,5 @@
+# owner: stroke-migration
+# Domain manifest for the stroke clinical domain.
+# See config/domains/CHANGELOG.md for schema version history.
+
+schema_version: "1"

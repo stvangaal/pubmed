@@ -37,6 +37,10 @@ class EmailConfig:
     subject: str               # Subject template with {date_range}, {article_count} placeholders
 ```
 
+## Domain Scoping
+
+When `--domain` is specified, this config is loaded from `config/domains/{domain}/email-config.yaml` instead of `config/email-config.yaml`. The schema is identical in both layouts. Each domain has its own sender, recipients, and subject template. See architecture decision A10.
+
 ## Constraints
 
 - `from_address` must be a verified sender in Resend (or `onboarding@resend.dev` for testing)
