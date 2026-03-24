@@ -1,6 +1,7 @@
 # owner: digest-build
 # Domain-scoped digest distribution configuration.
 # Copy to config/domains/<domain>/distribute-config.yaml and fill in TODO fields.
+config_version: 1
 
 # TODO: Title shown in the digest header and email subject.
 digest_title: "TODO: Domain Literature Weekly"

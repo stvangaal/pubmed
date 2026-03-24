@@ -1,6 +1,7 @@
 # owner: llm-summarize
 # Domain-scoped summarization configuration.
 # Copy to config/domains/<domain>/summary-config.yaml and fill in TODO fields.
+config_version: 1
 
 # Path to the domain-specific summary prompt.
 prompt_template_file: config/domains/_template/prompts/summary-prompt.md

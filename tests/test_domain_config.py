@@ -9,7 +9,9 @@ import pytest
 import yaml
 
 from src.config import (
+    CURRENT_CONFIG_VERSIONS,
     CURRENT_DOMAIN_SCHEMA_VERSION,
+    _check_config_version,
     _config_path,
     check_domain_schema,
     load_search_config,
@@ -19,6 +21,15 @@ from src.config import (
     load_blog_config,
     load_email_config,
 )
+
+CONFIG_YAMLS = [
+    "search-config.yaml",
+    "filter-config.yaml",
+    "summary-config.yaml",
+    "distribute-config.yaml",
+    "blog-config.yaml",
+    "email-config.yaml",
+]
 
 
 # --- Template completeness ---
@@ -64,7 +75,13 @@ class TestTemplateCompleteness:
 
     def test_changelog_documents_version_1(self):
         content = Path("config/domains/CHANGELOG.md").read_text()
-        assert "Version 1" in content
+        assert "v1" in content
+
+    @pytest.mark.parametrize("filename", CONFIG_YAMLS)
+    def test_template_has_config_version(self, filename):
+        data = yaml.safe_load((TEMPLATE_DIR / filename).read_text())
+        config_name = filename.replace(".yaml", "")
+        assert data.get("config_version") == int(CURRENT_CONFIG_VERSIONS[config_name])
 
 
 # --- Stroke domain completeness ---
@@ -85,6 +102,12 @@ class TestStrokeDomainCompleteness:
     def test_stroke_schema_version_matches(self):
         data = yaml.safe_load((STROKE_DIR / "domain.yaml").read_text())
         assert data["schema_version"] == CURRENT_DOMAIN_SCHEMA_VERSION
+
+    @pytest.mark.parametrize("filename", CONFIG_YAMLS)
+    def test_stroke_config_version_matches(self, filename):
+        data = yaml.safe_load((STROKE_DIR / filename).read_text())
+        config_name = filename.replace(".yaml", "")
+        assert data.get("config_version") == int(CURRENT_CONFIG_VERSIONS[config_name])
 
     def test_stroke_seen_pmids_path_is_domain_scoped(self):
         data = yaml.safe_load((STROKE_DIR / "filter-config.yaml").read_text())
@@ -132,6 +155,32 @@ class TestConfigPath:
 
 
 # --- Schema version check ---
+
+
+class TestConfigVersionCheck:
+    """Verify per-config version checking."""
+
+    def test_matching_version_no_warning(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            _check_config_version({"config_version": "1"}, "search-config", "stroke")
+        assert caplog.text == ""
+
+    def test_mismatched_version_warns(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            _check_config_version({"config_version": "99"}, "search-config", "stroke")
+        assert "99" in caplog.text
+        assert "search-config" in caplog.text
+
+    def test_missing_version_no_warning(self, caplog):
+        """Legacy configs without config_version should not warn."""
+        with caplog.at_level(logging.WARNING):
+            _check_config_version({}, "search-config", None)
+        assert caplog.text == ""
+
+    def test_unknown_config_name_no_warning(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            _check_config_version({"config_version": "1"}, "unknown-config", "stroke")
+        assert caplog.text == ""
 
 
 class TestSchemaCheck:

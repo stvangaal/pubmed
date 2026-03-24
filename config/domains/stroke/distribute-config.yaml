@@ -1,5 +1,6 @@
 # owner: stroke-migration
 # Stroke domain distribution configuration.
+config_version: 1
 
 digest_title: "Stroke Literature Weekly"
 

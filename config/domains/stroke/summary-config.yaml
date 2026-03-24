@@ -1,5 +1,6 @@
 # owner: stroke-migration
 # Stroke domain summarization configuration.
+config_version: 1
 
 prompt_template_file: config/domains/stroke/prompts/summary-prompt.md
 model: claude-sonnet-4-6

@@ -1,4 +1,5 @@
 # owner: stroke-migration
+config_version: 1
 mesh_terms:
   - "stroke"
 date_window_days: 7

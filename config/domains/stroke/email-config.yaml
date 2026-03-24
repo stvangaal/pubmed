@@ -1,5 +1,6 @@
 # owner: stroke-migration
 # Stroke domain email configuration.
+config_version: 1
 
 # Whether to actually send emails (set false for local dev / dry runs)
 enabled: true

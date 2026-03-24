@@ -1,6 +1,7 @@
 # owner: email-send
 # Domain-scoped email configuration.
 # Copy to config/domains/<domain>/email-config.yaml and fill in TODO fields.
+config_version: 1
 
 # Whether to actually send emails (set false for local dev / dry runs).
 enabled: true

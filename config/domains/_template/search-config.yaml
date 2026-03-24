@@ -1,5 +1,6 @@
 # owner: pubmed-query
 # Domain-scoped search configuration.
+config_version: 1
 # Copy this file to config/domains/<domain>/search-config.yaml and fill in TODO fields.
 
 # TODO: List the MeSH terms that define this domain's search scope.

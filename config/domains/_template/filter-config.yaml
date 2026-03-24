@@ -1,6 +1,7 @@
 # owner: llm-triage
 # Domain-scoped filter configuration.
 # Copy to config/domains/<domain>/filter-config.yaml and fill in TODO fields.
+config_version: 1
 
 rule_filter:
   require_abstract: true

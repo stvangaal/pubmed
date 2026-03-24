@@ -1,5 +1,6 @@
 # owner: stroke-migration
 # Stroke domain filter configuration.
+config_version: 1
 # See docs/definitions/filter-config.md for the canonical schema.
 
 rule_filter:

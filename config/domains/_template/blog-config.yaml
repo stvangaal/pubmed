@@ -1,6 +1,7 @@
 # owner: blog-publish
 # Domain-scoped blog publishing configuration.
 # Copy to config/domains/<domain>/blog-config.yaml and fill in TODO fields.
+config_version: 1
 
 # TODO: Title shown in the blog header.
 site_title: "TODO: Domain Literature Weekly"
