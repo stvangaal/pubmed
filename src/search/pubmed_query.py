@@ -113,15 +113,25 @@ def build_query(config: SearchConfig, run_date: datetime | None = None) -> str:
     if config.require_language:
         parts.append(f'"{config.require_language}"[Language]')
 
-    # Excluded MeSH terms — each as NOT "term"[MeSH Terms]
-    for term in config.exclude_mesh_terms:
-        parts.append(f'NOT "{term}"[MeSH Terms]')
+    query = " AND ".join(parts)
 
-    # Excluded article types — each as NOT "type"[Publication Type]
-    for pt in config.exclude_article_types:
-        parts.append(f'NOT "{pt}"[Publication Type]')
+    # Exclusions use NOT with OR-grouped terms inside parentheses.
+    # PubMed treats NOT as a binary operator; chaining individual
+    # "AND NOT x AND NOT y" can misparse. Instead:
+    #   query NOT ("a"[MeSH Terms] OR "b"[MeSH Terms])
+    if config.exclude_mesh_terms:
+        mesh_excl = " OR ".join(
+            f'"{t}"[MeSH Terms]' for t in config.exclude_mesh_terms
+        )
+        query += f" NOT ({mesh_excl})"
 
-    return " AND ".join(parts)
+    if config.exclude_article_types:
+        type_excl = " OR ".join(
+            f'"{t}"[Publication Type]' for t in config.exclude_article_types
+        )
+        query += f" NOT ({type_excl})"
+
+    return query
 
 
 # ---------------------------------------------------------------------------
