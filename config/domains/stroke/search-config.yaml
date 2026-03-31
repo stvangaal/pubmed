@@ -6,3 +6,27 @@ date_window_days: 7
 retmax: 200
 require_abstract: true
 rate_limit_delay: 0.4
+
+# Language filter — applied at PubMed query level.
+require_language: "eng"
+
+# MeSH terms excluded at search time (reduces candidate set before filtering).
+exclude_mesh_terms:
+  - "animals"
+  - "mice"
+  - "rats"
+  - "disease models, animal"
+  - "in vitro techniques"
+
+# Article types excluded at search time.
+exclude_article_types:
+  - "case reports"
+  - "letter"
+  - "editorial"
+  - "comment"
+  - "news"
+  - "biography"
+  - "historical article"
+  - "published erratum"
+  - "retraction of publication"
+  - "retracted publication"

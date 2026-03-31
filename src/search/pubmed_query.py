@@ -68,6 +68,18 @@ def build_query(config: SearchConfig, run_date: datetime | None = None) -> str:
     )
     parts.append(date_range)
 
+    # Language filter — e.g. AND "eng"[Language]
+    if config.require_language:
+        parts.append(f'"{config.require_language}"[Language]')
+
+    # Excluded MeSH terms — each as NOT "term"[MeSH Terms]
+    for term in config.exclude_mesh_terms:
+        parts.append(f'NOT "{term}"[MeSH Terms]')
+
+    # Excluded article types — each as NOT "type"[Publication Type]
+    for pt in config.exclude_article_types:
+        parts.append(f'NOT "{pt}"[Publication Type]')
+
     return " AND ".join(parts)
 
 

@@ -5,3 +5,21 @@ date_window_days: 7
 retmax: 200
 require_abstract: true
 rate_limit_delay: 0.4
+require_language: "eng"
+exclude_mesh_terms:
+  - "animals"
+  - "mice"
+  - "rats"
+  - "disease models, animal"
+  - "in vitro techniques"
+exclude_article_types:
+  - "case reports"
+  - "letter"
+  - "editorial"
+  - "comment"
+  - "news"
+  - "biography"
+  - "historical article"
+  - "published erratum"
+  - "retraction of publication"
+  - "retracted publication"
