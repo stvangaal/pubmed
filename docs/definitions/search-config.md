@@ -24,7 +24,19 @@ class SearchConfig:
     exclude_mesh_terms: list[str]      # MeSH terms to exclude via NOT clauses, e.g. ["animals", "mice"]
     exclude_article_types: list[str]   # Publication types to exclude via NOT clauses, e.g. ["case reports"]
     require_language: str | None       # ISO 639-2 language code filter, e.g. "eng" (default None)
+    related_searches: list[RelatedSearch]  # Secondary searches for adjacent conditions (default [])
+
+@dataclass
+class RelatedSearch:
+    mesh_terms: list[str]              # MeSH Major Topic terms for the related condition
+    require_article_types: list[str]   # Only these publication types are included (default [])
 ```
+
+## Related Searches
+
+Related searches allow a domain to capture high-impact articles on adjacent conditions. Each entry defines its own MeSH terms and required article types. The query builder OR-joins related searches with the primary search, then applies shared filters (date, language, exclusions) to the whole.
+
+Example: a stroke domain might add related searches for "atrial fibrillation" restricted to RCTs and systematic reviews, so that landmark AF trials with stroke-prevention implications are captured without flooding the pipeline with all AF literature.
 
 ## Domain Scoping
 
@@ -47,3 +59,4 @@ When `--domain` is specified, this config is loaded from `config/domains/{domain
 |------|---------|--------|----------------|
 | 2026-03-23 | v0 | Initial draft from search spike | — |
 | 2026-03-31 | v0 | Added exclude_mesh_terms, exclude_article_types, require_language (moved from filter-config) | pubmed-query, rule-filter |
+| 2026-03-31 | v0 | Added related_searches for adjacent-condition capture with article-type restrictions | pubmed-query |

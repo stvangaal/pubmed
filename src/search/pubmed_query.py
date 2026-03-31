@@ -26,29 +26,70 @@ BASE_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 # Query construction
 # ---------------------------------------------------------------------------
 
-def build_query(config: SearchConfig, run_date: datetime | None = None) -> str:
-    """Build a PubMed query string from a SearchConfig.
+def _build_primary_part(mesh_terms: list[str]) -> str:
+    """Build the primary MeSH clause.
 
-    Combines MeSH terms with OR, adds any additional free-text terms,
-    and appends a date range filter using [Date - Entry].
-
-    The end date is run_date minus 1 day (exclusive) to prevent overlap
-    between consecutive runs. The start date is run_date minus
-    date_window_days.
-
-    Example output:
-        "stroke"[MeSH Major Topic] AND 2026/03/16:2026/03/22[Date - Entry]
+    Uses [MeSH Major Topic] which explodes by default in PubMed — all
+    narrower terms in the MeSH hierarchy are included automatically.
+    For example, "Stroke"[MeSH Major Topic] also matches "Brain
+    Infarction", "Hemorrhagic Stroke", etc.
     """
-    if run_date is None:
-        run_date = datetime.now()
+    clauses = [f'"{term}"[MeSH Major Topic]' for term in mesh_terms]
+    part = " OR ".join(clauses)
+    if len(clauses) > 1:
+        part = f"({part})"
+    return part
 
-    # MeSH terms — OR-joined, each wrapped in quotes with [MeSH Major Topic].
-    mesh_clauses = [f'"{term}"[MeSH Major Topic]' for term in config.mesh_terms]
+
+def _build_related_part(related) -> str:
+    """Build a single related-search clause: (mesh AND article_types)."""
+    # MeSH terms — OR-joined with [MeSH Major Topic] (explodes by default).
+    mesh_clauses = [f'"{t}"[MeSH Major Topic]' for t in related.mesh_terms]
     mesh_part = " OR ".join(mesh_clauses)
     if len(mesh_clauses) > 1:
         mesh_part = f"({mesh_part})"
 
-    parts = [mesh_part]
+    # Required article types — OR-joined with [Publication Type].
+    if related.require_article_types:
+        type_clauses = [
+            f'"{t}"[Publication Type]' for t in related.require_article_types
+        ]
+        type_part = " OR ".join(type_clauses)
+        if len(type_clauses) > 1:
+            type_part = f"({type_part})"
+        return f"({mesh_part} AND {type_part})"
+
+    return mesh_part
+
+
+def build_query(config: SearchConfig, run_date: datetime | None = None) -> str:
+    """Build a PubMed query string from a SearchConfig.
+
+    Constructs a compound query: the primary MeSH search OR-ed with any
+    related searches (which have their own article-type restrictions).
+    Shared filters (date, language, exclusions) are ANDed to the whole.
+
+    Example output (with related searches):
+        (("stroke"[MeSH Major Topic]) OR ("atrial fibrillation"[MeSH Major
+        Topic] AND ("randomized controlled trial"[Publication Type] OR
+        "meta-analysis"[Publication Type]))) AND 2026/03/16:2026/03/22
+        [Date - Entry] AND "eng"[Language] AND NOT "animals"[MeSH Terms]
+    """
+    if run_date is None:
+        run_date = datetime.now()
+
+    # --- Subject part: primary OR related searches ---
+    primary = _build_primary_part(config.mesh_terms)
+
+    related_parts = [_build_related_part(r) for r in config.related_searches]
+
+    if related_parts:
+        all_subjects = [primary] + related_parts
+        subject_part = "(" + " OR ".join(all_subjects) + ")"
+    else:
+        subject_part = primary
+
+    parts = [subject_part]
 
     # Additional free-text terms — OR-joined.
     if config.additional_terms:

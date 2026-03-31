@@ -57,3 +57,14 @@ exclude_article_types:
   - "published erratum"
   - "retraction of publication"
   - "retracted publication"
+
+# TODO: Related searches for adjacent conditions.
+# Each entry has its own mesh_terms and required article types.
+# Articles must match BOTH the mesh term AND one of the article types.
+# related_searches:
+#   - mesh_terms:
+#       - "TODO: related condition mesh term"
+#     require_article_types:
+#       - "randomized controlled trial"
+#       - "meta-analysis"
+#       - "systematic review"

@@ -30,3 +30,42 @@ exclude_article_types:
   - "published erratum"
   - "retraction of publication"
   - "retracted publication"
+
+# Related conditions: high-impact articles only (RCTs, systematic reviews,
+# meta-analyses, reviews). The LLM triage filters reviews by journal quality.
+related_searches:
+  - mesh_terms:
+      - "atrial fibrillation"
+    require_article_types:
+      - "randomized controlled trial"
+      - "meta-analysis"
+      - "systematic review"
+      - "review"
+  - mesh_terms:
+      - "carotid stenosis"
+    require_article_types:
+      - "randomized controlled trial"
+      - "meta-analysis"
+      - "systematic review"
+      - "review"
+  - mesh_terms:
+      - "intracranial hemorrhages"
+    require_article_types:
+      - "randomized controlled trial"
+      - "meta-analysis"
+      - "systematic review"
+      - "review"
+  - mesh_terms:
+      - "ischemic attack, transient"
+    require_article_types:
+      - "randomized controlled trial"
+      - "meta-analysis"
+      - "systematic review"
+      - "review"
+  - mesh_terms:
+      - "intracranial embolism and thrombosis"
+    require_article_types:
+      - "randomized controlled trial"
+      - "meta-analysis"
+      - "systematic review"
+      - "review"
