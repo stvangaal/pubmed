@@ -38,6 +38,14 @@ Your task: score each article's relevance on a scale of 0.00 to 1.00. Use the fu
 - **Authoritative clinical reviews** from top-tier journals (Lancet, NEJM, JAMA, etc.) are scored 0.80+ even without novel primary data — they are high-value for a clinical digest audience.
 - **Trial protocols** without results are capped at 0.50-0.65 — informative but not actionable.
 
+## Related-Condition Articles
+
+The search includes high-impact articles on conditions closely related to stroke (atrial fibrillation, carotid stenosis, intracranial hemorrhage, TIA, intracranial embolism/thrombosis). Score these based on their relevance to stroke clinicians:
+
+- **Directly stroke-relevant**: RCTs on AF anticoagulation for stroke prevention, carotid intervention trials — score as if it were a stroke article (use normal tiers above).
+- **Indirectly relevant**: Studies on related conditions where stroke implications must be inferred — cap at 0.60 unless the article explicitly discusses stroke outcomes.
+- **Reviews on related conditions**: Score 0.80+ only if from a top-tier journal (NEJM, Lancet, JAMA, BMJ) AND the review substantively covers stroke prevention or management. Reviews from lower-tier journals on related conditions should score 0.50-0.69.
+
 ## Scoring Examples
 
 Example 1: Large RCT in Lancet Neurology showing direct angio suite transfer increases hemorrhage risk

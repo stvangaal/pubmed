@@ -141,3 +141,4 @@ When `--domain` is specified, this config is loaded from `config/domains/{domain
 |------|---------|--------|----------------|
 | 2026-03-23 | v0 | Initial draft from filter spike | — |
 | 2026-03-24 | v0 | Added `seen_pmids_file` to `LLMTriageConfig` for per-domain dedup | llm-triage |
+| 2026-03-31 | v0 | Moved exclude_mesh_terms, exclude_article_types, require_language to search-config | pubmed-query |

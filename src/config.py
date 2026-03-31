@@ -24,6 +24,7 @@ CURRENT_DOMAIN_SCHEMA_VERSION = CURRENT_CONFIG_VERSIONS["domain"]
 
 from src.models import (
     SearchConfig,
+    RelatedSearch,
     FilterConfig,
     RuleFilterConfig,
     LLMTriageConfig,
@@ -107,7 +108,10 @@ def load_search_config(
     data = _load_yaml(resolved)
     _check_config_version(data, "search-config", domain)
     data.pop("config_version", None)
-    return SearchConfig(**data)
+    # Deserialize related_searches dicts into RelatedSearch objects.
+    raw_related = data.pop("related_searches", [])
+    related = [RelatedSearch(**entry) for entry in raw_related]
+    return SearchConfig(**data, related_searches=related)
 
 
 def load_filter_config(

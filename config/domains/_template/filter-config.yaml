@@ -5,17 +5,8 @@ config_version: 1
 
 rule_filter:
   require_abstract: true
-  require_language: "eng"
-
-  # MeSH terms that cause an article to be excluded regardless of other criteria.
-  # Keep the animal/in vitro exclusions for all clinical domains.
-  exclude_mesh_terms:
-    - "animals"
-    - "mice"
-    - "rats"
-    - "disease models, animal"
-    - "in vitro techniques"
-    # TODO: add domain-specific exclusions (e.g. "pediatrics" if you only want adults)
+  # Language, MeSH exclusions, and article type exclusions have been moved
+  # to search-config.yaml to filter at PubMed query time.
 
   # Only these article types are passed to LLM triage.
   include_article_types:
@@ -31,19 +22,6 @@ rule_filter:
     - "observational study"
     - "comparative study"
     # TODO: add or remove types based on domain conventions
-
-  # Article types that are always excluded.
-  exclude_article_types:
-    - "case reports"
-    - "letter"
-    - "editorial"
-    - "comment"
-    - "news"
-    - "biography"
-    - "historical article"
-    - "published erratum"
-    - "retraction of publication"
-    - "retracted publication"
 
 llm_triage:
   model: "claude-sonnet-4-6"

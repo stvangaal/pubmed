@@ -75,6 +75,17 @@ class EmailDigest:
 
 
 @dataclass
+class RelatedSearch:
+    """A secondary search for related conditions with stricter type filters.
+
+    See docs/definitions/search-config.md (related_searches section).
+    """
+
+    mesh_terms: list[str]
+    require_article_types: list[str] = field(default_factory=list)
+
+
+@dataclass
 class SearchConfig:
     """See docs/definitions/search-config.md."""
 
@@ -85,6 +96,10 @@ class SearchConfig:
     retmax: int = 200
     require_abstract: bool = True
     rate_limit_delay: float = 0.4
+    exclude_mesh_terms: list[str] = field(default_factory=list)
+    exclude_article_types: list[str] = field(default_factory=list)
+    require_language: str | None = None
+    related_searches: list[RelatedSearch] = field(default_factory=list)
 
 
 @dataclass
