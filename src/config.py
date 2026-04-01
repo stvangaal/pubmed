@@ -24,6 +24,7 @@ CURRENT_DOMAIN_SCHEMA_VERSION = CURRENT_CONFIG_VERSIONS["domain"]
 
 from src.models import (
     SearchConfig,
+    Topic,
     FilterConfig,
     RuleFilterConfig,
     LLMTriageConfig,
@@ -107,7 +108,10 @@ def load_search_config(
     data = _load_yaml(resolved)
     _check_config_version(data, "search-config", domain)
     data.pop("config_version", None)
-    return SearchConfig(**data)
+    # Support both "topics" (new) and "search_profiles" (backward compat)
+    topics_data = data.pop("topics", None) or data.pop("search_profiles", [])
+    topics = [Topic(**t) for t in topics_data]
+    return SearchConfig(topics=topics, **data)
 
 
 def load_filter_config(

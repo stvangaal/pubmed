@@ -30,3 +30,18 @@ require_abstract: true
 
 # Delay between PubMed API calls in seconds (0.4 = safe default without API key).
 rate_limit_delay: 0.4
+
+# TODO: Topics for this program's search scope.
+# Each topic runs as an independent PubMed query; results are
+# deduplicated by PMID before entering the filter stage.
+# For programs with multiple co-equal topics (e.g., neurology with
+# epilepsy, Parkinson's, MS), list each as a topic here.
+# Optional: add triage_prompt_file per topic for custom triage scoring.
+# topics:
+#   - name: TODO
+#     mesh_terms:
+#       - "TODO: mesh term"
+#   - name: TODO
+#     mesh_terms:
+#       - "TODO: mesh term"
+#     triage_prompt_file: "config/domains/<domain>/prompts/TODO-triage-prompt.md"

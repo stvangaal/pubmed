@@ -1,5 +1,5 @@
-# owner: stroke-migration
-# Stroke domain email configuration.
+# owner: neurology-digest
+# Neurology domain email configuration.
 config_version: 1
 
 # Whether to actually send emails (set false for local dev / dry runs)
@@ -13,7 +13,7 @@ to_addresses:
   - "svangaal@gmail.com"
 
 # Email subject line — supports {date_range} and {article_count} placeholders
-subject: "Stroke Literature Weekly — {date_range}"
+subject: "Neurology Literature Weekly — {date_range}"
 
 # Domain owner email — receives troubleshooting report each run.
 owner_email: "Stephen@vangaal.ca"

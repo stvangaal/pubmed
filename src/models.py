@@ -66,6 +66,7 @@ class PubmedRecord:
     language: str
     doi: str | None
     status: str  # "retrieved" | "filtered"
+    source_topic: str = ""
     triage_score: float | None = None
     triage_rationale: str | None = None
 
@@ -93,6 +94,7 @@ class LiteratureSummary:
     triage_rationale: str
     feedback_url: str
     raw_llm_response: str
+    source_topic: str = ""
 
 
 @dataclass
@@ -117,6 +119,29 @@ class EmailDigest:
 
 
 @dataclass
+class Topic:
+    """A named search topic within a program.
+
+    Each topic runs as an independent PubMed query.  It inherits
+    date_window_days, retmax, require_abstract, rate_limit_delay, and
+    api_key from the parent SearchConfig.
+
+    Topics are co-equal within a program — there is no distinguished
+    "main" topic.  For backward compatibility, a top-level mesh_terms
+    in SearchConfig still works as an implicit primary search.
+    """
+
+    name: str
+    mesh_terms: list[str]
+    additional_terms: list[str] = field(default_factory=list)
+    triage_prompt_file: str | None = None
+
+
+# Backward-compat alias
+SearchProfile = Topic
+
+
+@dataclass
 class SearchConfig:
     """See docs/definitions/search-config.md."""
 
@@ -127,6 +152,7 @@ class SearchConfig:
     retmax: int = 200
     require_abstract: bool = True
     rate_limit_delay: float = 0.4
+    topics: list[Topic] = field(default_factory=list)
 
 
 @dataclass
@@ -234,6 +260,7 @@ class EmailConfig:
     from_address: str = "onboarding@resend.dev"
     to_addresses: list[str] = field(default_factory=list)
     subject: str = "Stroke Literature Weekly — {date_range}"
+    owner_email: str | None = None
 
 
 @dataclass

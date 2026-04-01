@@ -7,6 +7,7 @@ owns:
   - src/search/date_normalize.py
   - tests/search/test_pubmed_query.py
   - tests/search/test_date_normalize.py
+  - tests/search/test_multi_search.py
   - config/search-config.yaml
 requires:
   - name: search-config
@@ -107,6 +108,18 @@ Exclude articles at parse time (do not include in output):
 
 Log excluded articles with reason.
 
+### Multi-Search (Topic Expansion)
+
+When `search_profiles` are configured, `multi_search()` runs the primary search plus one independent search per profile, then deduplicates by PMID:
+
+1. Run the primary `search()` with the top-level `mesh_terms`.
+2. For each `SearchProfile`, build a `SearchConfig` using the profile's `mesh_terms`/`additional_terms` and the parent config's `date_window_days`, `retmax`, `require_abstract`, `rate_limit_delay`, and `api_key`.
+3. Run `search()` for each profile config.
+4. Merge results: deduplicate by PMID (first-seen wins).
+5. Return the merged list and the sum of all esearch counts.
+
+When `search_profiles` is empty (the default), `multi_search()` behaves identically to `search()`.
+
 ### Output
 
 Return a list of `PubmedRecord` objects with status `"retrieved"` and the total count from esearch (for logging/metrics).
@@ -119,6 +132,7 @@ Return a list of `PubmedRecord` objects with status `"retrieved"` and the total 
 | PQ2 | Use E-utilities directly, not a wrapper library | BioPython Entrez, PyMed | Direct API access avoids dependencies, is well-documented, and gives full control. The API surface we need is small (esearch + efetch). | 2026-03-23 |
 | PQ3 | Broad MeSH query, let filter stage narrow | Narrow query with article type filters | The spike showed filtered_types returned only 4/week — too few for robust filtering. Broad query (~42/week) gives the filter stage enough candidates to work with. | 2026-03-23 |
 | PQ4 | Rate limit with configurable delay, not hardcoded | Hardcoded 0.4s; no delay | Configurable respects both API-key and no-key scenarios. Default 0.4s is safe for keyless access (< 3 req/sec). | 2026-03-23 |
+| PQ5 | Multiple independent queries for topic expansion, dedup by PMID | Single OR-joined query (reverted); widen primary mesh_terms; PubMed elink API | Independent queries avoid NOT-clause syntax issues that caused the previous revert. Each profile is isolated — failures or volume spikes are contained. Dedup is trivial (PMID set). Filter stage unchanged per PQ3. | 2026-04-01 |
 
 ## Tests
 
@@ -133,6 +147,11 @@ Return a list of `PubmedRecord` objects with status `"retrieved"` and the total 
 - **test_date_normalize_medline**: Given `MedlineDate="2026 Mar-Apr"`, verify output is `"2026-03"`.
 - **test_author_format**: Given `LastName=Smith, ForeName=John Alexander`, verify output is `"Smith J"`.
 - **test_author_no_forename**: Given `LastName=Smith` only, verify output is `"Smith"`.
+
+- **test_multi_search_no_profiles**: Verify `multi_search()` with no profiles behaves identically to `search()`.
+- **test_multi_search_merges_results**: Verify results from primary + profiles are merged.
+- **test_multi_search_deduplicates_by_pmid**: Verify duplicate PMIDs across queries are kept once (first-seen wins).
+- **test_multi_search_profile_inherits_config**: Verify profile queries inherit parent config fields.
 
 ### Contract Tests
 

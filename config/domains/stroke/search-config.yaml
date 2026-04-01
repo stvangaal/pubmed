@@ -6,3 +6,24 @@ date_window_days: 7
 retmax: 200
 require_abstract: true
 rate_limit_delay: 0.4
+
+# Additional topics for stroke-adjacent conditions.
+# Each topic runs as an independent PubMed query; results are
+# deduplicated by PMID before entering the filter stage.
+# Optional: add triage_prompt_file per topic for custom triage scoring.
+topics:
+  - name: atrial-fibrillation
+    mesh_terms:
+      - "atrial fibrillation"
+  - name: carotid-stenosis
+    mesh_terms:
+      - "carotid stenosis"
+  - name: intracranial-hemorrhage
+    mesh_terms:
+      - "intracranial hemorrhages"
+  - name: tia
+    mesh_terms:
+      - "ischemic attack, transient"
+  - name: intracranial-thrombosis
+    mesh_terms:
+      - "intracranial embolism and thrombosis"

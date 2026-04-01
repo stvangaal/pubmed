@@ -6,7 +6,7 @@ import os
 
 import resend
 
-from src.models import EmailConfig, EmailDigest
+from src.models import EmailConfig, EmailDigest, LLMUsage, PubmedRecord
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +105,187 @@ def _markdown_to_html(markdown: str) -> str:
         html_lines.append("</ul>")
 
     return "\n".join(html_lines)
+
+
+def _render_cost_lines(
+    llm_usage: list[LLMUsage],
+) -> tuple[list[str], list[str]]:
+    """Render LLM cost breakdown as markdown and plain-text line lists."""
+    if not llm_usage:
+        return [], []
+
+    total_cost = sum(u.estimated_cost for u in llm_usage)
+    total_input = sum(u.input_tokens for u in llm_usage)
+    total_output = sum(u.output_tokens for u in llm_usage)
+    total_calls = sum(u.call_count for u in llm_usage)
+
+    md: list[str] = ["\n**LLM Cost Summary**\n"]
+    pt: list[str] = ["\nLLM Cost Summary\n"]
+
+    for u in llm_usage:
+        cache_note = ""
+        if u.cache_read_input_tokens:
+            cache_note = f" (cache hits: {u.cache_read_input_tokens:,} tokens)"
+        md.append(
+            f"- **{u.stage}** ({u.model}): "
+            f"{u.call_count} calls, "
+            f"{u.input_tokens:,} in / {u.output_tokens:,} out tokens"
+            f"{cache_note} — ${u.estimated_cost:.4f}"
+        )
+        pt.append(
+            f"- {u.stage} ({u.model}): "
+            f"{u.call_count} calls, "
+            f"{u.input_tokens:,} in / {u.output_tokens:,} out tokens"
+            f"{cache_note} — ${u.estimated_cost:.4f}"
+        )
+
+    md.append(
+        f"- **Total**: {total_calls} calls, "
+        f"{total_input:,} in / {total_output:,} out tokens "
+        f"— **${total_cost:.4f}**"
+    )
+    pt.append(
+        f"- Total: {total_calls} calls, "
+        f"{total_input:,} in / {total_output:,} out tokens "
+        f"— ${total_cost:.4f}"
+    )
+
+    return md, pt
+
+
+def build_rejection_report(
+    below: list[PubmedRecord],
+    date_range: str,
+    score_threshold: float,
+    max_articles: int,
+    llm_usage: list[LLMUsage] | None = None,
+) -> tuple[str, str]:
+    """Build a troubleshooting report for articles that didn't make the cut.
+
+    Splits the below list into near-misses (scored >= threshold but cut by
+    the article cap) and below-threshold (scored < threshold).
+
+    Returns:
+        Tuple of (markdown, plain_text) content strings.
+    """
+    near_misses = [r for r in below if (r.triage_score or 0.0) >= score_threshold]
+    below_thresh = [r for r in below if (r.triage_score or 0.0) < score_threshold]
+
+    md_parts: list[str] = []
+    pt_parts: list[str] = []
+
+    md_parts.append(f"**Troubleshooting Report — {date_range}**")
+    pt_parts.append(f"Troubleshooting Report — {date_range}")
+
+    if near_misses:
+        md_parts.append(
+            f"\n**Near-Misses ({len(near_misses)})** — scored >= {score_threshold} "
+            f"but cut by {max_articles}-article cap\n"
+        )
+        pt_parts.append(
+            f"\nNear-Misses ({len(near_misses)}) — scored >= {score_threshold} "
+            f"but cut by {max_articles}-article cap\n"
+        )
+        for r in near_misses:
+            md_parts.append(
+                f"- **{r.title}** ({r.journal}) — Score: {r.triage_score}\n"
+                f"  Rationale: {r.triage_rationale}"
+            )
+            pt_parts.append(
+                f"- {r.title} ({r.journal}) — Score: {r.triage_score}\n"
+                f"  Rationale: {r.triage_rationale}"
+            )
+
+    if below_thresh:
+        md_parts.append(
+            f"\n**Below Threshold ({len(below_thresh)})** — scored < {score_threshold}\n"
+        )
+        pt_parts.append(
+            f"\nBelow Threshold ({len(below_thresh)}) — scored < {score_threshold}\n"
+        )
+        for r in below_thresh:
+            md_parts.append(
+                f"- **{r.title}** ({r.journal}) — Score: {r.triage_score}\n"
+                f"  Rationale: {r.triage_rationale}"
+            )
+            pt_parts.append(
+                f"- {r.title} ({r.journal}) — Score: {r.triage_score}\n"
+                f"  Rationale: {r.triage_rationale}"
+            )
+
+    if not near_misses and not below_thresh:
+        md_parts.append("\nNo articles were rejected this run.")
+        pt_parts.append("\nNo articles were rejected this run.")
+
+    # --- LLM cost breakdown ---
+    cost_md, cost_pt = _render_cost_lines(llm_usage or [])
+    md_parts.extend(cost_md)
+    pt_parts.extend(cost_pt)
+
+    md_parts.append("\n---\n*This report is sent only to the domain owner.*")
+    pt_parts.append("\n---\nThis report is sent only to the domain owner.")
+
+    return "\n".join(md_parts), "\n".join(pt_parts)
+
+
+def send_rejection_report(
+    below: list[PubmedRecord],
+    config: EmailConfig,
+    date_range: str,
+    score_threshold: float,
+    max_articles: int,
+    llm_usage: list[LLMUsage] | None = None,
+) -> bool:
+    """Send a troubleshooting report of rejected articles to the domain owner.
+
+    Args:
+        below: Articles that didn't make the cut (from LLM triage).
+        config: EmailConfig with owner_email and sender info.
+        date_range: Human-readable date range for the subject line.
+        score_threshold: LLM triage score threshold.
+        max_articles: Maximum articles allowed through triage.
+        llm_usage: Optional list of LLMUsage objects for cost breakdown.
+
+    Returns:
+        True if the email was sent successfully, False otherwise.
+    """
+    if not config.owner_email:
+        logger.info("No owner_email configured, skipping troubleshooting report")
+        return False
+
+    if not below:
+        logger.info("No rejected articles, skipping troubleshooting report")
+        return False
+
+    api_key = os.environ.get("RESEND_API_KEY")
+    if not api_key:
+        logger.warning("RESEND_API_KEY not set, skipping troubleshooting report")
+        return False
+
+    resend.api_key = api_key
+
+    markdown, plain_text = build_rejection_report(
+        below, date_range, score_threshold, max_articles, llm_usage
+    )
+
+    subject = f"Troubleshooting Report — {date_range}"
+
+    try:
+        params: resend.Emails.SendParams = {
+            "from": config.from_address,
+            "to": [config.owner_email],
+            "subject": subject,
+            "html": _markdown_to_html(markdown),
+            "text": plain_text,
+        }
+        result = resend.Emails.send(params)
+        logger.info(
+            "Troubleshooting report sent (id: %s)", result.get("id", "unknown")
+        )
+        return True
+    except Exception:
+        logger.warning("Failed to send troubleshooting report", exc_info=True)
+        return False
 
 
 def _inline_format(text: str) -> str:

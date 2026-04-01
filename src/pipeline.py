@@ -15,13 +15,13 @@ from src.config import (
     load_blog_config,
     load_email_config,
 )
-from src.search.pubmed_query import search
+from src.search.pubmed_query import multi_search
 from src.filter.rule_filter import rule_filter
 from src.filter.llm_triage import llm_triage
 from src.summarize.llm_summarize import summarize
 from src.distribute.blog_publish import publish_blog
 from src.distribute.digest_build import build_digest
-from src.distribute.email_send import send_digest
+from src.distribute.email_send import send_digest, send_rejection_report
 
 logging.basicConfig(
     level=logging.INFO,
@@ -70,7 +70,7 @@ def run():
 
     # --- Stage 1: Search ---
     logger.info("Stage 1: Search")
-    records, total = search(search_config, run_date=run_date)
+    records, total = multi_search(search_config, run_date=run_date)
     logger.info(f"  Retrieved {len(records)} records ({total} total in PubMed)")
 
     if not records:
@@ -92,10 +92,17 @@ def run():
 
     # --- Stage 2b: Filter (LLM triage) ---
     logger.info("Stage 2b: LLM triage")
+    # Build per-topic prompt overrides from search config topics
+    topic_prompts = {
+        t.name: t.triage_prompt_file
+        for t in search_config.topics
+        if t.triage_prompt_file
+    }
     above, below, triage_usage = llm_triage(
         passed,
         filter_config.llm_triage,
         seen_pmids_path=filter_config.llm_triage.seen_pmids_file,
+        topic_prompts=topic_prompts or None,
     )
     logger.info(f"  {len(above)} above threshold, {len(below)} below")
     logger.info(f"  LLM triage cost: ${triage_usage.estimated_cost:.4f}")
@@ -129,6 +136,21 @@ def run():
         logger.info("  Email sent to: %s", ", ".join(email_config.to_addresses))
     else:
         logger.info("  Email not sent (disabled, no key, or error)")
+
+    # --- Stage 4d: Send troubleshooting report to owner ---
+    logger.info("Stage 4d: Troubleshooting report")
+    trouble_sent = send_rejection_report(
+        below=below,
+        config=email_config,
+        date_range=date_range,
+        score_threshold=filter_config.llm_triage.score_threshold,
+        max_articles=filter_config.llm_triage.max_articles,
+        llm_usage=llm_usage,
+    )
+    if trouble_sent:
+        logger.info("  Troubleshooting report sent to: %s", email_config.owner_email)
+    else:
+        logger.info("  Troubleshooting report not sent (no owner, no key, or nothing to report)")
 
     logger.info("Pipeline complete")
 

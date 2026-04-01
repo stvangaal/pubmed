@@ -14,7 +14,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 
-from src.models import PubmedRecord, SearchConfig
+from src.models import PubmedRecord, SearchConfig, Topic
 from src.search.date_normalize import normalize_pub_date
 
 logger = logging.getLogger(__name__)
@@ -300,3 +300,66 @@ def search(
         total_count,
     )
     return records, total_count
+
+
+def multi_search(
+    config: SearchConfig,
+    run_date: datetime | None = None,
+) -> tuple[list[PubmedRecord], int]:
+    """Run primary search plus any configured topics, deduplicate.
+
+    Each topic runs as an independent PubMed query using its own
+    mesh_terms/additional_terms but inheriting date_window_days, retmax,
+    require_abstract, rate_limit_delay, and api_key from the parent config.
+
+    Results are deduplicated by PMID (first-seen wins).  Each record is
+    tagged with source_topic indicating which topic found it.
+
+    When config.mesh_terms is non-empty, a primary search runs first
+    (tagged source_topic="primary") for backward compatibility.
+    """
+    all_records: list[PubmedRecord] = []
+    seen_pmids: set[str] = set()
+    total = 0
+
+    # Primary search (backward compat — runs when top-level mesh_terms set)
+    if config.mesh_terms:
+        primary_records, primary_total = search(config, run_date)
+        total += primary_total
+        for r in primary_records:
+            r.source_topic = "primary"
+            seen_pmids.add(r.pmid)
+        all_records.extend(primary_records)
+
+    # Topic searches
+    for topic in config.topics:
+        topic_config = SearchConfig(
+            mesh_terms=topic.mesh_terms,
+            additional_terms=topic.additional_terms,
+            date_window_days=config.date_window_days,
+            retmax=config.retmax,
+            require_abstract=config.require_abstract,
+            rate_limit_delay=config.rate_limit_delay,
+            api_key=config.api_key,
+        )
+        logger.info("Running topic search: %s", topic.name)
+        records, count = search(topic_config, run_date)
+        total += count
+        new_count = 0
+        for r in records:
+            if r.pmid not in seen_pmids:
+                r.source_topic = topic.name
+                seen_pmids.add(r.pmid)
+                all_records.append(r)
+                new_count += 1
+        logger.info(
+            "Topic '%s': %d results, %d new (after dedup)",
+            topic.name, len(records), new_count,
+        )
+
+    logger.info(
+        "Multi-search complete: %d total records (from %d topics%s)",
+        len(all_records), len(config.topics),
+        " + primary" if config.mesh_terms else "",
+    )
+    return all_records, total
