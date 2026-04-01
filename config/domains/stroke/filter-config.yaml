@@ -5,8 +5,13 @@ config_version: 1
 
 rule_filter:
   require_abstract: true
-  # Language, MeSH exclusions, and article type exclusions have been moved
-  # to search-config.yaml to filter at PubMed query time.
+  require_language: "eng"
+  exclude_mesh_terms:
+    - "animals"
+    - "mice"
+    - "rats"
+    - "disease models, animal"
+    - "in vitro techniques"
   include_article_types:
     - "randomized controlled trial"
     - "meta-analysis"
@@ -19,6 +24,17 @@ rule_filter:
     - "multicenter study"
     - "observational study"
     - "comparative study"
+  exclude_article_types:
+    - "case reports"
+    - "letter"
+    - "editorial"
+    - "comment"
+    - "news"
+    - "biography"
+    - "historical article"
+    - "published erratum"
+    - "retraction of publication"
+    - "retracted publication"
 
 llm_triage:
   model: "claude-sonnet-4-6"
