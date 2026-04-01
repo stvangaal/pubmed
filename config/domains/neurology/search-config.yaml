@@ -1,0 +1,48 @@
+# owner: neurology-digest
+config_version: 1
+mesh_terms:
+  - "nervous system diseases"
+date_window_days: 7
+retmax: 200
+require_abstract: true
+rate_limit_delay: 0.4
+
+# Topics for general neurology subspecialties.
+# Each topic runs as an independent PubMed query; results are
+# deduplicated by PMID before entering the filter stage.
+topics:
+  - name: epilepsy
+    mesh_terms:
+      - "epilepsy"
+  - name: multiple-sclerosis
+    mesh_terms:
+      - "multiple sclerosis"
+  - name: parkinsons
+    mesh_terms:
+      - "parkinson disease"
+  - name: dementia
+    mesh_terms:
+      - "dementia"
+      - "alzheimer disease"
+  - name: headache
+    mesh_terms:
+      - "migraine disorders"
+      - "headache disorders"
+  - name: neuromuscular
+    mesh_terms:
+      - "neuromuscular diseases"
+  - name: movement-disorders
+    mesh_terms:
+      - "movement disorders"
+  - name: cns-infections
+    mesh_terms:
+      - "central nervous system infections"
+  - name: brain-neoplasms
+    mesh_terms:
+      - "brain neoplasms"
+  - name: stroke
+    mesh_terms:
+      - "stroke"
+  - name: autoimmune-encephalitis
+    mesh_terms:
+      - "autoimmune diseases of the nervous system"

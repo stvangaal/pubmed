@@ -1,0 +1,65 @@
+# owner: neurology-digest
+# Neurology domain filter configuration.
+config_version: 1
+# See docs/definitions/filter-config.md for the canonical schema.
+
+rule_filter:
+  require_abstract: true
+  require_language: "eng"
+  exclude_mesh_terms:
+    - "animals"
+    - "mice"
+    - "rats"
+    - "disease models, animal"
+    - "in vitro techniques"
+  include_article_types:
+    - "randomized controlled trial"
+    - "meta-analysis"
+    - "systematic review"
+    - "practice guideline"
+    - "guideline"
+    - "clinical trial"
+    - "clinical trial, phase iii"
+    - "clinical trial, phase iv"
+    - "multicenter study"
+    - "observational study"
+    - "comparative study"
+  exclude_article_types:
+    - "case reports"
+    - "letter"
+    - "editorial"
+    - "comment"
+    - "news"
+    - "biography"
+    - "historical article"
+    - "published erratum"
+    - "retraction of publication"
+    - "retracted publication"
+
+llm_triage:
+  model: "claude-sonnet-4-6"
+  max_tokens: 150
+  score_threshold: 0.75
+  max_articles: 15
+  use_prompt_caching: true
+  triage_prompt_file: "config/domains/neurology/prompts/triage-prompt.md"
+  seen_pmids_file: "data/domains/neurology/seen-pmids.json"
+
+priority_journals:
+  - "the new england journal of medicine"
+  - "the lancet"
+  - "the lancet. neurology"
+  - "jama"
+  - "jama neurology"
+  - "neurology"
+  - "annals of neurology"
+  - "brain : a journal of neurology"
+  - "stroke"
+  - "bmj (clinical research ed.)"
+  - "annals of internal medicine"
+  - "epilepsia"
+  - "movement disorders"
+  - "multiple sclerosis (houndmills, basingstoke, england)"
+  - "journal of neurology, neurosurgery, and psychiatry"
+  - "neurology. clinical practice"
+  - "the lancet. psychiatry"

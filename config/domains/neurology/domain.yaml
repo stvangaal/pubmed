@@ -1,0 +1,5 @@
+# owner: neurology-digest
+# Domain manifest for the neurology clinical domain.
+# See config/domains/CHANGELOG.md for schema version history.
+
+schema_version: "1"

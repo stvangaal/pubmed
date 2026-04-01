@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        domain: [stroke]
+        domain: [stroke, neurology]
       fail-fast: false  # One domain failing shouldn't block others
     steps:
       - uses: actions/checkout@v5
