@@ -32,6 +32,7 @@ def llm_triage(
     config: LLMTriageConfig,
     output_dir: str | None = None,
     seen_pmids_path: str = _SEEN_PMIDS_PATH,
+    topic_prompts: dict[str, str] | None = None,
 ) -> tuple[list[PubmedRecord], list[PubmedRecord]]:
     """Score records with an LLM and split by threshold.
 
@@ -41,12 +42,17 @@ def llm_triage(
         output_dir: Optional directory for below-threshold log and merged
             exclusion log.
         seen_pmids_path: Path to seen-pmids.json for cross-run dedup.
+        topic_prompts: Optional mapping of topic name → prompt file path.
+            When a record's source_topic has an entry here, that prompt is
+            used instead of the default triage prompt.
 
     Returns:
         Tuple of (above_threshold, below_threshold) lists, both sorted by
         triage_score descending.  above_threshold is capped at
         config.max_articles.
     """
+    topic_prompts = topic_prompts or {}
+
     # --- Dedup: skip PMIDs already scored in prior runs ---
     seen_pmids = _load_seen_pmids(seen_pmids_path)
     new_records = [r for r in records if r.pmid not in seen_pmids]
@@ -54,26 +60,41 @@ def llm_triage(
     if skipped:
         logger.info("Dedup: skipped %d previously seen PMIDs", skipped)
 
-    # --- Load system prompt from file ---
-    system_prompt = _load_system_prompt(config.triage_prompt_file)
+    # --- Load and cache system prompts per topic ---
+    default_prompt = _load_system_prompt(config.triage_prompt_file)
+    prompt_cache: dict[str, str] = {"": default_prompt}
+    for topic_name, prompt_file in topic_prompts.items():
+        prompt_cache[topic_name] = _load_system_prompt(prompt_file)
 
-    # --- Build the system message (with optional caching) ---
-    if config.use_prompt_caching:
-        system_message = [
-            {
-                "type": "text",
-                "text": system_prompt,
-                "cache_control": {"type": "ephemeral"},
-            }
-        ]
-    else:
-        system_message = system_prompt
+    # --- Group records by prompt to maximize prompt caching ---
+    def _prompt_key(r: PubmedRecord) -> str:
+        return r.source_topic if r.source_topic in prompt_cache else ""
+
+    # --- Build system messages per prompt key ---
+    system_messages: dict[str, object] = {}
+    for key, prompt_text in prompt_cache.items():
+        if config.use_prompt_caching:
+            system_messages[key] = [
+                {
+                    "type": "text",
+                    "text": prompt_text,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ]
+        else:
+            system_messages[key] = prompt_text
 
     # --- Score each record ---
     client = anthropic.Anthropic()
     scored: list[PubmedRecord] = []
 
-    for record in new_records:
+    # Sort by prompt key so records sharing a prompt are scored consecutively
+    # (maximizes prompt caching effectiveness)
+    sorted_records = sorted(new_records, key=_prompt_key)
+
+    for record in sorted_records:
+        key = _prompt_key(record)
+        system_message = system_messages[key]
         user_content = _build_user_message(record)
         score, rationale = _call_llm(client, config, system_message, user_content)
         record.triage_score = score
