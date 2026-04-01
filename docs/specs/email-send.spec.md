@@ -1,6 +1,6 @@
 ---
 name: email-send
-status: ready
+status: in-progress
 owner: distribute
 owns:
   - src/distribute/email_send.py
@@ -17,7 +17,7 @@ provides: []
 # Email Send
 
 ## Status
-ready
+in-progress
 
 ## Target Phase
 Phase 3
