@@ -162,26 +162,57 @@ def _publish_to_gh_pages(
                 index_markdown = _rebuild_index(tmp_path, config)
                 (tmp_path / "index.md").write_text(index_markdown)
 
-                # Commit and push
-                _run_git(["add", "."], cwd=tmp_path)
+                # Commit and push with retry — parallel matrix jobs may
+                # race on the gh-pages branch, so pull --rebase before
+                # retrying a failed push.
+                max_retries = 3
+                for attempt in range(max_retries):
+                    _run_git(["add", "."], cwd=tmp_path)
 
-                # Check if there are changes to commit
-                result = _run_git(
-                    ["diff", "--cached", "--quiet"],
-                    cwd=tmp_path,
-                    check=False,
-                )
-                if result.returncode == 0:
-                    logger.info("No changes to commit to gh-pages")
-                    return True
+                    # Check if there are changes to commit
+                    result = _run_git(
+                        ["diff", "--cached", "--quiet"],
+                        cwd=tmp_path,
+                        check=False,
+                    )
+                    if result.returncode == 0:
+                        logger.info("No changes to commit to gh-pages")
+                        return True
 
-                _run_git(
-                    ["commit", "-m", f"Add digest {run_date}"],
-                    cwd=tmp_path,
+                    _run_git(
+                        ["commit", "-m", f"Add digest {run_date}"],
+                        cwd=tmp_path,
+                    )
+
+                    push_result = _run_git(
+                        ["push", "origin", config.branch],
+                        cwd=tmp_path,
+                        check=False,
+                    )
+                    if push_result.returncode == 0:
+                        logger.info("Published blog page for %s", run_date)
+                        return True
+
+                    # Push failed — likely a concurrent update to gh-pages.
+                    # Pull with rebase, re-apply our changes, and retry.
+                    logger.warning(
+                        "Push to gh-pages failed (attempt %d/%d), "
+                        "rebasing and retrying: %s",
+                        attempt + 1,
+                        max_retries,
+                        push_result.stderr.strip(),
+                    )
+                    _run_git(
+                        ["pull", "--rebase", "origin", config.branch],
+                        cwd=tmp_path,
+                    )
+
+                # All retries exhausted
+                logger.error(
+                    "Failed to push to gh-pages after %d attempts",
+                    max_retries,
                 )
-                _run_git(["push", "origin", config.branch], cwd=tmp_path)
-                logger.info("Published blog page for %s", run_date)
-                return True
+                return False
 
             finally:
                 # Clean up worktree
