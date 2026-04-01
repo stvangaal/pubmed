@@ -15,3 +15,6 @@ to_addresses:
 
 # TODO: Email subject line. Supports {date_range} and {article_count} placeholders.
 subject: "TODO: Domain Literature Weekly — {date_range}"
+
+# TODO: Domain owner email — receives troubleshooting report each run (optional).
+owner_email: "TODO: owner@example.com"
