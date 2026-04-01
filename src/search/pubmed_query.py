@@ -14,7 +14,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 
-from src.models import PubmedRecord, SearchConfig
+from src.models import PubmedRecord, SearchConfig, SearchProfile
 from src.search.date_normalize import normalize_pub_date
 
 logger = logging.getLogger(__name__)
@@ -300,3 +300,50 @@ def search(
         total_count,
     )
     return records, total_count
+
+
+def multi_search(
+    config: SearchConfig,
+    run_date: datetime | None = None,
+) -> tuple[list[PubmedRecord], int]:
+    """Run primary search plus any configured search profiles, deduplicate.
+
+    Each search profile runs as an independent PubMed query using its own
+    mesh_terms/additional_terms but inheriting date_window_days, retmax,
+    require_abstract, rate_limit_delay, and api_key from the parent config.
+
+    Results are deduplicated by PMID (first-seen wins).  When no
+    search_profiles are configured, this behaves identically to search().
+    """
+    all_records, total = search(config, run_date)
+    seen_pmids = {r.pmid for r in all_records}
+
+    for profile in config.search_profiles:
+        profile_config = SearchConfig(
+            mesh_terms=profile.mesh_terms,
+            additional_terms=profile.additional_terms,
+            date_window_days=config.date_window_days,
+            retmax=config.retmax,
+            require_abstract=config.require_abstract,
+            rate_limit_delay=config.rate_limit_delay,
+            api_key=config.api_key,
+        )
+        logger.info("Running search profile: %s", profile.name)
+        records, count = search(profile_config, run_date)
+        total += count
+        new_count = 0
+        for r in records:
+            if r.pmid not in seen_pmids:
+                seen_pmids.add(r.pmid)
+                all_records.append(r)
+                new_count += 1
+        logger.info(
+            "Profile '%s': %d results, %d new (after dedup)",
+            profile.name, len(records), new_count,
+        )
+
+    logger.info(
+        "Multi-search complete: %d total records (from %d profiles + primary)",
+        len(all_records), len(config.search_profiles),
+    )
+    return all_records, total

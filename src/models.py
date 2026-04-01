@@ -75,6 +75,20 @@ class EmailDigest:
 
 
 @dataclass
+class SearchProfile:
+    """A named additional search query for related topics.
+
+    Each profile runs as an independent PubMed query.  It inherits
+    date_window_days, retmax, require_abstract, rate_limit_delay, and
+    api_key from the parent SearchConfig.
+    """
+
+    name: str
+    mesh_terms: list[str]
+    additional_terms: list[str] = field(default_factory=list)
+
+
+@dataclass
 class SearchConfig:
     """See docs/definitions/search-config.md."""
 
@@ -85,6 +99,7 @@ class SearchConfig:
     retmax: int = 200
     require_abstract: bool = True
     rate_limit_delay: float = 0.4
+    search_profiles: list[SearchProfile] = field(default_factory=list)
 
 
 @dataclass

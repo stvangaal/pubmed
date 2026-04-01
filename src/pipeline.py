@@ -15,7 +15,7 @@ from src.config import (
     load_blog_config,
     load_email_config,
 )
-from src.search.pubmed_query import search
+from src.search.pubmed_query import multi_search
 from src.filter.rule_filter import rule_filter
 from src.filter.llm_triage import llm_triage
 from src.summarize.llm_summarize import summarize
@@ -70,7 +70,7 @@ def run():
 
     # --- Stage 1: Search ---
     logger.info("Stage 1: Search")
-    records, total = search(search_config, run_date=run_date)
+    records, total = multi_search(search_config, run_date=run_date)
     logger.info(f"  Retrieved {len(records)} records ({total} total in PubMed)")
 
     if not records:
