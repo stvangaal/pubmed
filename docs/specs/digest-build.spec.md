@@ -1,6 +1,6 @@
 ---
 name: digest-build
-status: ready
+status: in-progress
 owner: distribute
 owns:
   - src/distribute/digest_build.py
@@ -21,7 +21,7 @@ provides:
 # Digest Build
 
 ## Status
-ready
+in-progress
 
 ## Target Phase
 Phase 2
