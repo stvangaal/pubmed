@@ -119,7 +119,7 @@ while IFS='|' read -r _ spec _ _ owns _; do
 
     spec_owns_map+="$pattern:$spec"$'\n'
   done
-done < <(grep -E '^\|.*\.spec' "$REGISTER" 2>/dev/null || true)
+done < <(grep -E '^\| [a-z][a-z0-9_-]+ \| Phase' "$REGISTER" 2>/dev/null || true)
 
 # Check for unowned source files
 header "Check 3: Unowned source files"
@@ -255,7 +255,7 @@ while IFS='|' read -r _ spec _ status owns _; do
   owns=$(echo "$owns" | xargs)
   [ -z "$spec" ] && continue
 
-  spec_file="$SPECS_DIR/$spec"
+  spec_file="$SPECS_DIR/${spec}.spec.md"
 
   case "$status" in
     implemented)
@@ -277,7 +277,7 @@ while IFS='|' read -r _ spec _ status owns _; do
   if [ ! -f "$spec_file" ]; then
     warn "$spec: listed in register but file does not exist"
   fi
-done < <(grep -E '^\|.*\.spec' "$REGISTER" 2>/dev/null || true)
+done < <(grep -E '^\| [a-z][a-z0-9_-]+ \| Phase' "$REGISTER" 2>/dev/null || true)
 
 ok "Status consistency check complete"
 

@@ -29,6 +29,7 @@
 | project-infrastructure | Phase 0 | draft | src/__init__.py, tests/__init__.py, src/models.py, src/config.py, src/pipeline.py, requirements.txt, .gitignore | — |
 | domain-config | Phase 4 | draft | config/domains/_template/domain.yaml, config/domains/_template/search-config.yaml, config/domains/_template/filter-config.yaml, config/domains/_template/summary-config.yaml, config/domains/_template/distribute-config.yaml, config/domains/_template/blog-config.yaml, config/domains/_template/email-config.yaml, config/domains/_template/prompts/triage-prompt.md, config/domains/_template/prompts/summary-prompt.md, config/domains/CHANGELOG.md, tests/test_domain_config.py | — |
 | stroke-migration | Phase 4 | draft | config/domains/stroke/domain.yaml, config/domains/stroke/search-config.yaml, config/domains/stroke/filter-config.yaml, config/domains/stroke/summary-config.yaml, config/domains/stroke/distribute-config.yaml, config/domains/stroke/blog-config.yaml, config/domains/stroke/email-config.yaml, config/domains/stroke/prompts/triage-prompt.md, config/domains/stroke/prompts/summary-prompt.md | domain-config |
+| neurology-setup | Phase 4 | draft | config/domains/neurology/domain.yaml, config/domains/neurology/search-config.yaml, config/domains/neurology/filter-config.yaml, config/domains/neurology/summary-config.yaml, config/domains/neurology/distribute-config.yaml, config/domains/neurology/blog-config.yaml, config/domains/neurology/email-config.yaml, config/domains/neurology/prompts/triage-prompt.md, config/domains/neurology/prompts/summary-prompt.md | domain-config |
 
 ## Phase Summary
 
@@ -38,7 +39,7 @@
 | Phase 1 | 3 | ready |
 | Phase 2 | 2 | ready |
 | Phase 3 | 2 | ready |
-| Phase 4 | 2 | draft |
+| Phase 4 | 3 | draft |
 
 ## Unowned Code
 <!-- This section should always be empty. If it is not, something
@@ -67,3 +68,4 @@
 ### Phase 4
 9. domain-config (depends on project-infrastructure for config.py and pipeline.py)
 10. stroke-migration [disposable] (depends on domain-config for the target layout)
+11. neurology-setup (depends on domain-config for the target layout)

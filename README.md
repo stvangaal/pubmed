@@ -1,6 +1,6 @@
 # PubMed Stroke Monitor
 
-A weekly automated pipeline that identifies practice-changing stroke publications from PubMed, summarizes them using an LLM, and delivers a curated digest for clinical audiences.
+A weekly automated pipeline that identifies practice-changing clinical publications from PubMed, summarizes them using an LLM, and delivers curated digests for clinical audiences. Supports multiple clinical domains (stroke, neurology) via isolated config packages.
 
 ## What it does
 
@@ -10,14 +10,15 @@ PubMed API → Search → Filter → Summarize → Blog → Digest → Email
               + LLM        (~5-10/week)  (full+short)  archive    rendering  delivery
 ```
 
-Every week, the pipeline:
+Every week, per domain, the pipeline:
 
-1. **Searches** PubMed for stroke literature indexed in the past 7 days
+1. **Searches** PubMed for domain literature indexed in the past 7 days (supports multiple topic queries with deduplication)
 2. **Filters** aggressively — rule-based exclusions (animal studies, non-English, case reports), then LLM triage scoring for clinical relevance
-3. **Summarizes** each selected article with a stroke-domain LLM prompt that produces a structured clinical summary
+3. **Summarizes** each selected article with a domain-specific LLM prompt that produces a structured clinical summary
 4. **Publishes** each digest as a permanent blog page on GitHub Pages
 5. **Assembles** an email digest with links to the blog page (full summaries for top articles, teasers for the rest)
 6. **Emails** the digest to configured recipients via Resend
+7. **Reports** a troubleshooting email to the domain owner with near-miss articles, LLM costs, and rejection details
 
 ## Sample output
 
@@ -54,72 +55,76 @@ export ANTHROPIC_API_KEY=your-key-here
 
 ### Configure
 
-Edit the YAML files in `config/` to customize the pipeline for your domain:
+Each domain has its own config package under `config/domains/{name}/`:
 
 | File | What it controls |
 |------|-----------------|
-| `config/search-config.yaml` | PubMed query (MeSH terms, date window) |
-| `config/filter-config.yaml` | Rule-based filters + LLM triage (model, threshold, max articles) |
-| `config/summary-config.yaml` | Summary format (model, prompt, subdomain tags, feedback form) |
-| `config/blog-config.yaml` | Blog publishing (site URL, publish toggle, template paths) |
-| `config/distribute-config.yaml` | Email digest template (opening, closing, sort order, output paths) |
+| `domain.yaml` | Schema version for the config package |
+| `search-config.yaml` | PubMed query (MeSH terms, topics, date window) |
+| `filter-config.yaml` | Rule-based filters + LLM triage (model, threshold, max articles) |
+| `summary-config.yaml` | Summary format (model, prompt, subdomain tags, feedback form) |
+| `blog-config.yaml` | Blog publishing (site URL, publish toggle, template paths) |
+| `distribute-config.yaml` | Email digest template (opening, closing, sort order, output paths) |
+| `email-config.yaml` | Email delivery (sender, recipients, subject template) |
+| `prompts/triage-prompt.md` | System prompt for relevance scoring |
+| `prompts/summary-prompt.md` | System prompt for article summarization |
 
-LLM prompts are in `config/prompts/` and can be edited independently:
-
-| File | Purpose |
-|------|---------|
-| `config/prompts/triage-prompt.md` | System prompt for relevance scoring (what makes an article practice-changing?) |
-| `config/prompts/summary-prompt.md` | System prompt for article summarization (output format and tone) |
+Legacy flat config in `config/` is still supported when `--domain` is omitted.
 
 ### Run
 
 ```bash
+# Run for a specific domain
+python3 -m src.pipeline --domain stroke
+
+# Run with legacy flat config (backward compatible)
 python3 -m src.pipeline
 ```
 
-Output is written to `output/digest.md` (markdown) and `output/digest.txt` (plain text), and printed to stdout.
+### Add a new domain
 
-### Customize for your domain
-
-The default configuration targets **stroke medicine**. To adapt for a different clinical domain:
-
-1. Edit `config/search-config.yaml` — change `mesh_terms` to your domain's MeSH terms
-2. Edit `config/filter-config.yaml` — update `priority_journals` and adjust `include_article_types`/`exclude_article_types` as needed
-3. Edit `config/prompts/triage-prompt.md` — replace stroke-specific scoring guidance with your domain's criteria for "practice-changing"
-4. Edit `config/prompts/summary-prompt.md` — update the subdomain tags and any domain-specific instructions
-
-5. Edit `config/blog-config.yaml` — update `base_url` and `site_title` for your site
+1. Copy the template: `cp -r config/domains/_template config/domains/your-domain`
+2. Fill in all `TODO` placeholders in the copied YAML files and prompts
+3. Add your domain to the GitHub Actions matrix in `.github/workflows/weekly-digest.yml`
 
 No source code changes required.
+
+## Active domains
+
+| Domain | MeSH Terms | Status |
+|--------|-----------|--------|
+| `stroke` | Stroke, cerebrovascular disorders | Active (weekly) |
+| `neurology` | Neurology topics | Active (weekly) |
 
 ## Project structure
 
 ```
 pubmed/
-  config/                    # User-editable YAML config + LLM prompts
-    prompts/
-      triage-prompt.md       # LLM triage scoring prompt
-      summary-prompt.md      # LLM summary generation prompt
-    templates/
-      blog-post.md           # Blog page template (editable)
-      blog-index.md          # Blog index page template (editable)
-    search-config.yaml
-    filter-config.yaml
-    summary-config.yaml
-    blog-config.yaml         # Blog publishing settings
-    distribute-config.yaml
+  config/
+    domains/
+      _template/             # Copy this to create a new domain
+      stroke/                # Stroke domain config package
+      neurology/             # Neurology domain config package
+      CHANGELOG.md           # Config schema version history
+    templates/               # Shared blog templates
+      blog-post.md
+      blog-index.md
+    prompts/                 # Legacy flat prompts (backward compat)
+    *.yaml                   # Legacy flat configs (backward compat)
   src/                       # Pipeline source code
-    search/                  # Stage 1: PubMed API query
+    search/                  # Stage 1: PubMed API query + multi-topic search
     filter/                  # Stage 2: Rule filter + LLM triage
     summarize/               # Stage 3: LLM summarization
-    distribute/              # Stage 4: Blog publish + email digest
+    distribute/              # Stage 4: Blog publish + email digest + troubleshooting report
     models.py                # Shared data models
-    config.py                # Config loader
-    pipeline.py              # Orchestrator
+    config.py                # Domain-aware config loader
+    pipeline.py              # Orchestrator (--domain CLI)
   output/                    # Generated digests (gitignored)
-  data/                      # Runtime state — seen PMIDs (gitignored)
-  spikes/                    # Exploratory spike code (development only)
+  data/                      # Runtime state — seen PMIDs per domain (gitignored)
   docs/                      # Architecture, specs, definitions
+    specs/                   # Implementation specifications
+    definitions/             # Shared data contracts
+  .github/workflows/         # GitHub Actions (matrix strategy per domain)
 ```
 
 ## How filtering works
@@ -136,45 +141,23 @@ Each article in the digest includes a feedback link that pre-fills a Google Form
 
 ## Scheduling
 
-For automated weekly runs, use GitHub Actions:
+The pipeline runs automatically every Monday at noon ET via GitHub Actions with a matrix strategy that runs each domain in parallel:
 
 ```yaml
-# .github/workflows/weekly-digest.yml
-name: Weekly Stroke Digest
-on:
-  schedule:
-    - cron: '0 16 * * 1'  # Every Monday at 12pm noon EDT (16:00 UTC)
-  workflow_dispatch:       # Manual trigger for testing
-
-permissions:
-  contents: write          # Needed to push blog pages to gh-pages
-
+# .github/workflows/weekly-digest.yml (simplified)
 jobs:
   digest:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        domain: [stroke, neurology]
+      fail-fast: false
     steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0   # Full history needed for gh-pages push
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - run: pip install -r requirements.txt
-      - name: Configure git for blog publish
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-      - run: python3 -m src.pipeline
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-      - uses: actions/upload-artifact@v4
-        with:
-          name: digest
-          path: output/
+      - run: python3 -m src.pipeline --domain ${{ matrix.domain }}
 ```
 
-The pipeline publishes a blog page to GitHub Pages (via the `gh-pages` branch) and produces a paste-ready email digest with links to the blog. GitHub Pages auto-deploys within ~60 seconds of the push.
+To add a new domain to the schedule, add it to the `matrix.domain` list.
+
+The pipeline publishes a blog page to GitHub Pages (via the `gh-pages` branch) and produces an email digest with links to the blog. GitHub Pages auto-deploys within ~60 seconds of the push.
 
 ## Blog archive
 
