@@ -5,15 +5,15 @@ config_version: 1
 # Whether to actually send emails (set false for local dev / dry runs)
 enabled: true
 
-# TODO: Sender address (must be verified in Resend)
-from_address: "TODO: digest@yourdomain.com"
+# Sender address (must be verified in Resend)
+from_address: "strokedigest@vangaal.ca"
 
-# TODO: Recipient list
+# Recipient list
 to_addresses:
-  - "TODO: recipient@example.com"
+  - "svangaal@gmail.com"
 
 # Email subject line — supports {date_range} and {article_count} placeholders
 subject: "Neurology Literature Weekly — {date_range}"
 
-# TODO: Domain owner email — receives troubleshooting report each run.
-owner_email: "TODO: owner@example.com"
+# Domain owner email — receives troubleshooting report each run.
+owner_email: "Stephen@vangaal.ca"
