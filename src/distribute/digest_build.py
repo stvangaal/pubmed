@@ -10,7 +10,7 @@ teaser with blog link for the rest.
 from collections import OrderedDict
 from pathlib import Path
 
-from src.models import BlogPage, LiteratureSummary, EmailDigest, DistributeConfig
+from src.models import BlogPage, LiteratureSummary, LLMUsage, EmailDigest, DistributeConfig
 
 
 def _group_by_topic(
@@ -130,11 +130,72 @@ def _render_short_plain(
     )
 
 
+def _render_cost_section(llm_usage: list[LLMUsage]) -> tuple[str, str]:
+    """Render LLM cost breakdown as markdown and plain text.
+
+    Returns (markdown, plain_text) strings. Returns empty strings if
+    no usage data is provided.
+    """
+    if not llm_usage:
+        return "", ""
+
+    total_cost = sum(u.estimated_cost for u in llm_usage)
+    total_input = sum(u.input_tokens for u in llm_usage)
+    total_output = sum(u.output_tokens for u in llm_usage)
+    total_calls = sum(u.call_count for u in llm_usage)
+
+    md_lines = [
+        "",
+        "---",
+        "",
+        "**LLM Cost Summary**",
+        "",
+    ]
+    pt_lines = [
+        "",
+        "---",
+        "",
+        "LLM Cost Summary",
+        "",
+    ]
+
+    for u in llm_usage:
+        cache_note = ""
+        if u.cache_read_input_tokens:
+            cache_note = f" (cache hits: {u.cache_read_input_tokens:,} tokens)"
+        md_lines.append(
+            f"- **{u.stage}** ({u.model}): "
+            f"{u.call_count} calls, "
+            f"{u.input_tokens:,} in / {u.output_tokens:,} out tokens"
+            f"{cache_note} — ${u.estimated_cost:.4f}"
+        )
+        pt_lines.append(
+            f"- {u.stage} ({u.model}): "
+            f"{u.call_count} calls, "
+            f"{u.input_tokens:,} in / {u.output_tokens:,} out tokens"
+            f"{cache_note} — ${u.estimated_cost:.4f}"
+        )
+
+    md_lines.append(
+        f"- **Total**: {total_calls} calls, "
+        f"{total_input:,} in / {total_output:,} out tokens "
+        f"— **${total_cost:.4f}**"
+    )
+    pt_lines.append(
+        f"- Total: {total_calls} calls, "
+        f"{total_input:,} in / {total_output:,} out tokens "
+        f"— ${total_cost:.4f}"
+    )
+
+    return "\n".join(md_lines), "\n".join(pt_lines)
+
+
 def build_digest(
     summaries: list[LiteratureSummary],
     config: DistributeConfig,
     date_range: str,
     blog_page: BlogPage | None = None,
+    llm_usage: list[LLMUsage] | None = None,
 ) -> EmailDigest:
     """Assemble summaries into a formatted digest.
 
@@ -208,9 +269,12 @@ def build_digest(
         plain_body = pt_toc + "\n\n---\n\n" + "\n\n".join(pt_parts)
         summary_texts = md_parts
 
+    # --- Cost section ---
+    cost_md, cost_pt = _render_cost_section(llm_usage or [])
+
     # --- Assemble full documents ---
-    markdown_full = f"{opening_text}\n\n{markdown_body}\n\n{closing_text}\n"
-    plain_full = f"{opening_text}\n\n{plain_body}\n\n{closing_text}\n"
+    markdown_full = f"{opening_text}\n\n{markdown_body}\n\n{closing_text}{cost_md}\n"
+    plain_full = f"{opening_text}\n\n{plain_body}\n\n{closing_text}{cost_pt}\n"
 
     # --- Write output files ---
     md_path = Path(config.output.file)
@@ -235,4 +299,5 @@ def build_digest(
         closing=closing_text,
         markdown=markdown_full,
         plain_text=plain_full,
+        llm_usage=llm_usage or [],
     )

@@ -12,7 +12,7 @@ import os
 
 import anthropic
 
-from src.models import LLMTriageConfig, PubmedRecord
+from src.models import LLMTriageConfig, LLMUsage, PubmedRecord
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ def llm_triage(
     output_dir: str | None = None,
     seen_pmids_path: str = _SEEN_PMIDS_PATH,
     topic_prompts: dict[str, str] | None = None,
-) -> tuple[list[PubmedRecord], list[PubmedRecord]]:
+) -> tuple[list[PubmedRecord], list[PubmedRecord], LLMUsage]:
     """Score records with an LLM and split by threshold.
 
     Args:
@@ -47,9 +47,9 @@ def llm_triage(
             used instead of the default triage prompt.
 
     Returns:
-        Tuple of (above_threshold, below_threshold) lists, both sorted by
-        triage_score descending.  above_threshold is capped at
-        config.max_articles.
+        Tuple of (above_threshold, below_threshold, llm_usage) where the
+        first two are lists sorted by triage_score descending (above_threshold
+        capped at config.max_articles) and llm_usage tracks token counts.
     """
     topic_prompts = topic_prompts or {}
 
@@ -87,6 +87,7 @@ def llm_triage(
     # --- Score each record ---
     client = anthropic.Anthropic()
     scored: list[PubmedRecord] = []
+    usage_tracker = LLMUsage(stage="LLM Triage", model=config.model)
 
     # Sort by prompt key so records sharing a prompt are scored consecutively
     # (maximizes prompt caching effectiveness)
@@ -96,7 +97,9 @@ def llm_triage(
         key = _prompt_key(record)
         system_message = system_messages[key]
         user_content = _build_user_message(record)
-        score, rationale = _call_llm(client, config, system_message, user_content)
+        score, rationale = _call_llm(
+            client, config, system_message, user_content, usage_tracker
+        )
         record.triage_score = score
         record.triage_rationale = rationale
         record.status = "filtered"
@@ -129,7 +132,7 @@ def llm_triage(
         _write_below_threshold_log(below_threshold, output_dir)
         _append_triage_exclusions(below_threshold, output_dir)
 
-    return above_threshold, below_threshold
+    return above_threshold, below_threshold, usage_tracker
 
 
 # ---------------------------------------------------------------------------
@@ -159,6 +162,7 @@ def _call_llm(
     config: LLMTriageConfig,
     system_message,
     user_content: str,
+    usage_tracker: LLMUsage | None = None,
 ) -> tuple[float, str]:
     """Call the LLM and parse the JSON response.
 
@@ -172,21 +176,29 @@ def _call_llm(
     }
 
     # Attempt the call (with one retry on failure)
-    raw_text = _call_with_retry(client, kwargs)
+    raw_text = _call_with_retry(client, kwargs, usage_tracker)
 
     # Parse the JSON response
     return _parse_response(raw_text)
 
 
-def _call_with_retry(client: anthropic.Anthropic, kwargs: dict) -> str:
+def _call_with_retry(
+    client: anthropic.Anthropic,
+    kwargs: dict,
+    usage_tracker: LLMUsage | None = None,
+) -> str:
     """Call client.messages.create; retry once on failure."""
     try:
         response = client.messages.create(**kwargs)
+        if usage_tracker:
+            usage_tracker.add_response(response.usage)
         return response.content[0].text.strip()
     except Exception as e:
         logger.warning("LLM call failed, retrying once: %s", e)
         try:
             response = client.messages.create(**kwargs)
+            if usage_tracker:
+                usage_tracker.add_response(response.usage)
             return response.content[0].text.strip()
         except Exception as retry_err:
             logger.error("LLM retry failed: %s", retry_err)

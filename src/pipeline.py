@@ -98,18 +98,22 @@ def run():
         for t in search_config.topics
         if t.triage_prompt_file
     }
-    above, below = llm_triage(
+    above, below, triage_usage = llm_triage(
         passed,
         filter_config.llm_triage,
         seen_pmids_path=filter_config.llm_triage.seen_pmids_file,
         topic_prompts=topic_prompts or None,
     )
     logger.info(f"  {len(above)} above threshold, {len(below)} below")
+    logger.info(f"  LLM triage cost: ${triage_usage.estimated_cost:.4f}")
 
     # --- Stage 3: Summarize ---
     logger.info("Stage 3: Summarize")
-    summaries = summarize(above, summary_config)
+    summaries, summarize_usage = summarize(above, summary_config)
     logger.info(f"  Generated {len(summaries)} summaries")
+    logger.info(f"  Summarization cost: ${summarize_usage.estimated_cost:.4f}")
+
+    llm_usage = [triage_usage, summarize_usage]
 
     # --- Stage 4a: Blog publish ---
     logger.info("Stage 4a: Blog publish")
@@ -121,7 +125,7 @@ def run():
 
     # --- Stage 4b: Build email digest ---
     logger.info("Stage 4b: Build email digest")
-    digest = build_digest(summaries, distribute_config, date_range, blog_page)
+    digest = build_digest(summaries, distribute_config, date_range, blog_page, llm_usage)
     logger.info(f"  Digest assembled: {digest.article_count} articles")
     logger.info(f"  Written to: {distribute_config.output.file}")
 
@@ -141,6 +145,7 @@ def run():
         date_range=date_range,
         score_threshold=filter_config.llm_triage.score_threshold,
         max_articles=filter_config.llm_triage.max_articles,
+        llm_usage=llm_usage,
     )
     if trouble_sent:
         logger.info("  Troubleshooting report sent to: %s", email_config.owner_email)

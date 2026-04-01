@@ -10,7 +10,7 @@ from pathlib import Path
 
 import anthropic
 
-from src.models import LiteratureSummary, PubmedRecord, SummaryConfig
+from src.models import LiteratureSummary, LLMUsage, PubmedRecord, SummaryConfig
 from src.summarize.parse_summary import parse_summary
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 def summarize(
     records: list[PubmedRecord], config: SummaryConfig
-) -> list[LiteratureSummary]:
+) -> tuple[list[LiteratureSummary], LLMUsage]:
     """Summarize a list of filtered PubMed records using an LLM.
 
     For each record, formats a prompt, calls the Anthropic API, parses
@@ -30,21 +30,25 @@ def summarize(
         config: SummaryConfig with prompt template, model, and other settings.
 
     Returns:
-        List of LiteratureSummary objects for successfully summarized articles.
+        Tuple of (summaries, llm_usage) where summaries is a list of
+        LiteratureSummary objects and llm_usage tracks token counts.
     """
     prompt_template = _load_prompt_template(config)
     client = anthropic.Anthropic()
     summaries: list[LiteratureSummary] = []
+    usage_tracker = LLMUsage(stage="Summarization", model=config.model)
 
     for record in records:
-        summary = _summarize_one(record, config, prompt_template, client)
+        summary = _summarize_one(
+            record, config, prompt_template, client, usage_tracker
+        )
         if summary is not None:
             summaries.append(summary)
 
     logger.info(
         "Summarized %d of %d records", len(summaries), len(records)
     )
-    return summaries
+    return summaries, usage_tracker
 
 
 def _load_prompt_template(config: SummaryConfig) -> str:
@@ -69,12 +73,13 @@ def _summarize_one(
     config: SummaryConfig,
     prompt_template: str,
     client: anthropic.Anthropic,
+    usage_tracker: LLMUsage | None = None,
 ) -> LiteratureSummary | None:
     """Summarize a single record. Returns None on failure."""
     formatted_prompt = _format_prompt(prompt_template, record, config)
 
     # Call LLM with one retry on failure
-    raw_response = _call_llm(client, config, formatted_prompt)
+    raw_response = _call_llm(client, config, formatted_prompt, usage_tracker)
     if raw_response is None:
         logger.warning(
             "LLM call failed for PMID %s after retry — skipping", record.pmid
@@ -139,7 +144,10 @@ def _format_prompt(
 
 
 def _call_llm(
-    client: anthropic.Anthropic, config: SummaryConfig, prompt: str
+    client: anthropic.Anthropic,
+    config: SummaryConfig,
+    prompt: str,
+    usage_tracker: LLMUsage | None = None,
 ) -> str | None:
     """Call the Anthropic API. Retry once on failure.
 
@@ -152,6 +160,8 @@ def _call_llm(
                 max_tokens=config.max_tokens,
                 messages=[{"role": "user", "content": prompt}],
             )
+            if usage_tracker:
+                usage_tracker.add_response(response.usage)
             return response.content[0].text
         except Exception:
             if attempt == 0:
