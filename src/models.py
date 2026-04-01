@@ -207,6 +207,7 @@ class EmailConfig:
     from_address: str = "onboarding@resend.dev"
     to_addresses: list[str] = field(default_factory=list)
     subject: str = "Stroke Literature Weekly — {date_range}"
+    owner_email: str | None = None
 
 
 @dataclass

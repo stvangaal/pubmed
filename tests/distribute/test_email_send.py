@@ -1,0 +1,96 @@
+# owner: email-send
+"""Tests for rejection report building and sending."""
+
+from unittest.mock import patch, MagicMock
+
+from src.distribute.email_send import build_rejection_report, send_rejection_report
+from src.models import EmailConfig, PubmedRecord
+
+
+def _make_record(pmid: str, title: str, journal: str, score: float, rationale: str) -> PubmedRecord:
+    """Create a minimal PubmedRecord for testing."""
+    return PubmedRecord(
+        pmid=pmid,
+        title=title,
+        authors=[],
+        journal=journal,
+        abstract="",
+        pub_date="2026-01-01",
+        article_types=[],
+        mesh_terms=[],
+        language="eng",
+        doi=None,
+        status="filtered",
+        triage_score=score,
+        triage_rationale=rationale,
+    )
+
+
+class TestBuildRejectionReport:
+    def test_splits_near_misses_from_below_threshold(self):
+        below = [
+            _make_record("1", "Near Miss Article", "NEJM", 0.85, "Good but cut by cap"),
+            _make_record("2", "Below Thresh Article", "Lancet", 0.60, "Not relevant enough"),
+        ]
+        md, pt = build_rejection_report(below, "Mar 25 – Mar 31, 2026", 0.70, 10)
+
+        assert "Near-Misses (1)" in md
+        assert "Near Miss Article" in md
+        assert "Below Threshold (1)" in md
+        assert "Below Thresh Article" in md
+        assert "Score: 0.85" in md
+        assert "Score: 0.6" in md
+
+    def test_empty_list_produces_no_rejected_message(self):
+        md, pt = build_rejection_report([], "Mar 25 – Mar 31, 2026", 0.70, 10)
+
+        assert "No articles were rejected" in md
+        assert "No articles were rejected" in pt
+
+    def test_only_near_misses(self):
+        below = [
+            _make_record("1", "Cut By Cap", "JAMA", 0.80, "High score but capped"),
+        ]
+        md, pt = build_rejection_report(below, "Mar 25 – Mar 31, 2026", 0.70, 10)
+
+        assert "Near-Misses (1)" in md
+        assert "Below Threshold" not in md
+
+    def test_only_below_threshold(self):
+        below = [
+            _make_record("1", "Low Score", "BMJ", 0.50, "Not relevant"),
+        ]
+        md, pt = build_rejection_report(below, "Mar 25 – Mar 31, 2026", 0.70, 10)
+
+        assert "Below Threshold (1)" in md
+        assert "Near-Misses" not in md
+
+
+class TestSendRejectionReport:
+    def test_no_owner_returns_false(self):
+        config = EmailConfig(owner_email=None)
+        below = [_make_record("1", "Title", "J", 0.50, "reason")]
+        assert send_rejection_report(below, config, "range", 0.70, 10) is False
+
+    def test_empty_below_returns_false(self):
+        config = EmailConfig(owner_email="owner@example.com")
+        assert send_rejection_report([], config, "range", 0.70, 10) is False
+
+    @patch.dict("os.environ", {"RESEND_API_KEY": "test-key"})
+    @patch("src.distribute.email_send.resend")
+    def test_sends_to_owner_only(self, mock_resend):
+        mock_resend.Emails.send.return_value = {"id": "test-123"}
+        config = EmailConfig(
+            from_address="digest@example.com",
+            to_addresses=["subscriber@example.com"],
+            owner_email="owner@example.com",
+        )
+        below = [_make_record("1", "Title", "Journal", 0.65, "reason")]
+
+        result = send_rejection_report(below, config, "Mar 25 – Mar 31, 2026", 0.70, 10)
+
+        assert result is True
+        call_args = mock_resend.Emails.send.call_args[0][0]
+        assert call_args["to"] == ["owner@example.com"]
+        assert "subscriber@example.com" not in call_args["to"]
+        assert "Troubleshooting Report" in call_args["subject"]

@@ -14,3 +14,6 @@ to_addresses:
 
 # Email subject line — supports {date_range} and {article_count} placeholders
 subject: "Stroke Literature Weekly — {date_range}"
+
+# Domain owner email — receives troubleshooting report each run.
+owner_email: "Stephen@vangaal.ca"
