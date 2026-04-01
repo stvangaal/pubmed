@@ -34,7 +34,7 @@ Your task: score each article's relevance on a scale of 0.00 to 1.00. Use the fu
 - Trial protocols without results are informative but not practice-changing (0.50-0.65).
 - Geographic-specific epidemiology with limited generalizability should score lower.
 - Use two decimal places to differentiate within tiers.
-- Given the breadth of this digest, **raise the bar**: an article that would score 0.70 in a subspecialty-specific digest should score 0.55-0.65 here unless its findings are broadly relevant to general neurology practice.
+- Given the breadth of this digest, prioritize articles with broad clinical relevance. Single-subspecialty findings should be scored according to their general neurology impact using the tiers above — the subspecialty-only cap at 0.65 and cross-subspecialty boost already handle calibration.
 
 ## Domain-Specific Scoring Adjustments
 

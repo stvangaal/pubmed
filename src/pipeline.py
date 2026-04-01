@@ -146,6 +146,8 @@ def run():
         score_threshold=filter_config.llm_triage.score_threshold,
         max_articles=filter_config.llm_triage.max_articles,
         llm_usage=llm_usage,
+        min_articles=filter_config.llm_triage.min_articles,
+        min_score_floor=filter_config.llm_triage.min_score_floor,
     )
     if trouble_sent:
         logger.info("  Troubleshooting report sent to: %s", email_config.owner_email)

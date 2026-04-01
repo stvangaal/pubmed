@@ -174,6 +174,8 @@ class LLMTriageConfig:
     max_tokens: int = 150
     score_threshold: float = 0.70
     max_articles: int = 10
+    min_articles: int = 0
+    min_score_floor: float = 0.50
     use_prompt_caching: bool = True
     triage_prompt_file: str = "config/prompts/triage-prompt.md"
     seen_pmids_file: str = "data/seen-pmids.json"

@@ -123,6 +123,34 @@ def llm_triage(
         below_threshold = extras + below_threshold
         below_threshold.sort(key=lambda r: r.triage_score or 0.0, reverse=True)
 
+    # Backfill to meet min_articles guarantee
+    if config.min_articles > 0 and len(above_threshold) < config.min_articles:
+        need = config.min_articles - len(above_threshold)
+        eligible = [
+            r
+            for r in below_threshold
+            if (r.triage_score or 0.0) >= config.min_score_floor
+        ]
+        backfill = eligible[:need]  # already sorted by score desc
+        backfill_pmids = {r.pmid for r in backfill}
+        for r in backfill:
+            r.triage_rationale = (
+                f"[Backfilled to meet {config.min_articles}-article minimum] "
+                f"{r.triage_rationale}"
+            )
+        above_threshold.extend(backfill)
+        above_threshold.sort(key=lambda r: r.triage_score or 0.0, reverse=True)
+        below_threshold = [
+            r for r in below_threshold if r.pmid not in backfill_pmids
+        ]
+        if backfill:
+            logger.info(
+                "Backfilled %d articles (min_articles=%d, lowest=%.2f)",
+                len(backfill),
+                config.min_articles,
+                min(r.triage_score or 0.0 for r in backfill),
+            )
+
     # --- Update seen-PMIDs ---
     new_pmids = {r.pmid for r in scored}
     _save_seen_pmids(seen_pmids | new_pmids, seen_pmids_path)

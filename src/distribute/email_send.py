@@ -159,6 +159,8 @@ def build_rejection_report(
     score_threshold: float,
     max_articles: int,
     llm_usage: list[LLMUsage] | None = None,
+    min_articles: int = 0,
+    min_score_floor: float = 0.50,
 ) -> tuple[str, str]:
     """Build a troubleshooting report for articles that didn't make the cut.
 
@@ -176,6 +178,16 @@ def build_rejection_report(
 
     md_parts.append(f"**Troubleshooting Report — {date_range}**")
     pt_parts.append(f"Troubleshooting Report — {date_range}")
+
+    if min_articles > 0:
+        md_parts.append(
+            f"\n*Filter settings*: threshold={score_threshold}, "
+            f"max={max_articles}, **min={min_articles}** (floor={min_score_floor})\n"
+        )
+        pt_parts.append(
+            f"\nFilter settings: threshold={score_threshold}, "
+            f"max={max_articles}, min={min_articles} (floor={min_score_floor})\n"
+        )
 
     if near_misses:
         md_parts.append(
@@ -259,6 +271,8 @@ def send_rejection_report(
     score_threshold: float,
     max_articles: int,
     llm_usage: list[LLMUsage] | None = None,
+    min_articles: int = 0,
+    min_score_floor: float = 0.50,
 ) -> bool:
     """Send a troubleshooting report of rejected articles to the domain owner.
 
@@ -269,6 +283,8 @@ def send_rejection_report(
         score_threshold: LLM triage score threshold.
         max_articles: Maximum articles allowed through triage.
         llm_usage: Optional list of LLMUsage objects for cost breakdown.
+        min_articles: Minimum articles guarantee (0 = disabled).
+        min_score_floor: Score floor for backfill eligibility.
 
     Returns:
         True if the email was sent successfully, False otherwise.
@@ -289,7 +305,8 @@ def send_rejection_report(
     resend.api_key = api_key
 
     markdown, plain_text = build_rejection_report(
-        below, date_range, score_threshold, max_articles, llm_usage
+        below, date_range, score_threshold, max_articles, llm_usage,
+        min_articles, min_score_floor,
     )
 
     subject = f"Troubleshooting Report — {date_range}"
