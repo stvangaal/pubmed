@@ -1,0 +1,26 @@
+# owner: neurology-digest
+# Neurology domain summarization configuration.
+config_version: 1
+
+prompt_template_file: config/domains/neurology/prompts/summary-prompt.md
+model: claude-sonnet-4-6
+max_tokens: 600
+
+subdomain_options:
+  - Epilepsy
+  - Multiple Sclerosis
+  - Movement Disorders
+  - Dementia & Cognition
+  - Headache
+  - Neuromuscular
+  - Stroke
+  - Neuro-oncology
+  - CNS Infections
+  - Autoimmune Neurology
+  - General Neurology
+
+# Google Form (or similar) for per-article clinician feedback.
+# TODO: Create a feedback form for the neurology digest and update these values.
+# The feedback URL is constructed as: {feedback_form_url}?{feedback_pmid_field}={pmid}
+feedback_form_url: "TODO"
+feedback_pmid_field: "TODO"

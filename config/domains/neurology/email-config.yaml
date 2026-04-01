@@ -1,0 +1,19 @@
+# owner: neurology-digest
+# Neurology domain email configuration.
+config_version: 1
+
+# Whether to actually send emails (set false for local dev / dry runs)
+enabled: true
+
+# TODO: Sender address (must be verified in Resend)
+from_address: "TODO: digest@yourdomain.com"
+
+# TODO: Recipient list
+to_addresses:
+  - "TODO: recipient@example.com"
+
+# Email subject line — supports {date_range} and {article_count} placeholders
+subject: "Neurology Literature Weekly — {date_range}"
+
+# TODO: Domain owner email — receives troubleshooting report each run.
+owner_email: "TODO: owner@example.com"
