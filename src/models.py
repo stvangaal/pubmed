@@ -8,6 +8,47 @@ from dataclasses import dataclass, field
 
 
 @dataclass
+class LLMUsage:
+    """Token usage and estimated cost for a pipeline stage."""
+
+    stage: str
+    model: str
+    call_count: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_creation_input_tokens: int = 0
+    cache_read_input_tokens: int = 0
+
+    # Anthropic pricing per million tokens (Claude Sonnet 4.6 defaults)
+    _INPUT_COST_PER_M: float = 3.00
+    _OUTPUT_COST_PER_M: float = 15.00
+    _CACHE_WRITE_COST_PER_M: float = 3.75
+    _CACHE_READ_COST_PER_M: float = 0.30
+
+    @property
+    def estimated_cost(self) -> float:
+        """Estimated cost in USD based on Anthropic Sonnet 4.6 pricing."""
+        return (
+            self.input_tokens * self._INPUT_COST_PER_M
+            + self.output_tokens * self._OUTPUT_COST_PER_M
+            + self.cache_creation_input_tokens * self._CACHE_WRITE_COST_PER_M
+            + self.cache_read_input_tokens * self._CACHE_READ_COST_PER_M
+        ) / 1_000_000
+
+    def add_response(self, usage) -> None:
+        """Accumulate token counts from an Anthropic API response.usage object."""
+        self.call_count += 1
+        self.input_tokens += getattr(usage, "input_tokens", 0)
+        self.output_tokens += getattr(usage, "output_tokens", 0)
+        self.cache_creation_input_tokens += getattr(
+            usage, "cache_creation_input_tokens", 0
+        ) or 0
+        self.cache_read_input_tokens += getattr(
+            usage, "cache_read_input_tokens", 0
+        ) or 0
+
+
+@dataclass
 class PubmedRecord:
     """Core domain object flowing through the pipeline.
 
@@ -69,6 +110,7 @@ class EmailDigest:
     closing: str
     markdown: str
     plain_text: str
+    llm_usage: list["LLMUsage"] = field(default_factory=list)
 
 
 # --- Config models ---
