@@ -69,6 +69,14 @@ llm_triage:
   # Maximum articles to include per run (cap for busy weeks)
   max_articles: 10
 
+  # Minimum articles to include per run (backfill from below-threshold on slow weeks)
+  # Default 0 = disabled (no backfill guarantee)
+  min_articles: 0
+
+  # Score floor for backfill eligibility (never backfill articles below this score)
+  # Default 0.50 = aligns with the "Incremental" tier in scoring guides
+  min_score_floor: 0.50
+
   # Enable prompt caching (reduces cost for repeated system prompt)
   use_prompt_caching: true
 
@@ -110,6 +118,8 @@ class LLMTriageConfig:
     max_tokens: int
     score_threshold: float
     max_articles: int
+    min_articles: int          # Minimum articles guarantee (0 = disabled, backfills from below-threshold)
+    min_score_floor: float     # Score floor for backfill eligibility (default: 0.50)
     use_prompt_caching: bool
     triage_prompt_file: str
     seen_pmids_file: str       # Path to per-domain dedup history (default: "data/seen-pmids.json")
@@ -129,6 +139,8 @@ When `--domain` is specified, this config is loaded from `config/domains/{domain
 
 - `score_threshold` must be between 0.0 and 1.0
 - `max_articles` must be >= 1
+- `min_articles` must be >= 0 (0 disables backfill guarantee)
+- `min_score_floor` must be between 0.0 and 1.0, and should be < `score_threshold`
 - `max_tokens` must be between 50 and 500
 - `triage_prompt_file` must point to an existing file
 - `require_language` uses ISO 639-2 three-letter codes (e.g., "eng", "fre", "chi")
@@ -141,3 +153,4 @@ When `--domain` is specified, this config is loaded from `config/domains/{domain
 |------|---------|--------|----------------|
 | 2026-03-23 | v0 | Initial draft from filter spike | — |
 | 2026-03-24 | v0 | Added `seen_pmids_file` to `LLMTriageConfig` for per-domain dedup | llm-triage |
+| 2026-04-01 | v0 | Added `min_articles` and `min_score_floor` to `LLMTriageConfig` for minimum article guarantee | llm-triage |

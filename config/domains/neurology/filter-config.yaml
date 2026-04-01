@@ -39,8 +39,10 @@ rule_filter:
 llm_triage:
   model: "claude-sonnet-4-6"
   max_tokens: 150
-  score_threshold: 0.75
+  score_threshold: 0.70
   max_articles: 15
+  min_articles: 5
+  min_score_floor: 0.50
   use_prompt_caching: true
   triage_prompt_file: "config/domains/neurology/prompts/triage-prompt.md"
   seen_pmids_file: "data/domains/neurology/seen-pmids.json"
