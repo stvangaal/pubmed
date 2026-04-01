@@ -19,7 +19,7 @@
 
 | Spec | Phase | Status | Owns (files/directories) | Depends On |
 |------|-------|--------|--------------------------|------------|
-| pubmed-query | Phase 1 | ready | src/search/__init__.py, src/search/pubmed_query.py, src/search/date_normalize.py, tests/search/__init__.py, tests/search/test_pubmed_query.py, tests/search/test_date_normalize.py, config/search-config.yaml | search-config |
+| pubmed-query | Phase 1 | ready | src/search/__init__.py, src/search/pubmed_query.py, src/search/date_normalize.py, tests/search/__init__.py, tests/search/test_pubmed_query.py, tests/search/test_date_normalize.py, tests/search/test_multi_search.py, config/search-config.yaml | search-config |
 | rule-filter | Phase 1 | ready | src/filter/__init__.py, src/filter/rule_filter.py, tests/filter/__init__.py, tests/filter/test_rule_filter.py | pubmed-record, filter-config |
 | llm-triage | Phase 1 | ready | src/filter/llm_triage.py, tests/filter/test_llm_triage.py, config/prompts/triage-prompt.md, config/filter-config.yaml | pubmed-record, filter-config |
 | llm-summarize | Phase 2 | ready | src/summarize/__init__.py, src/summarize/llm_summarize.py, src/summarize/parse_summary.py, tests/summarize/__init__.py, tests/summarize/test_llm_summarize.py, tests/summarize/test_parse_summary.py, config/summary-config.yaml, config/prompts/summary-prompt.md | pubmed-record, summary-config |

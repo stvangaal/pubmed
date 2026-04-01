@@ -30,3 +30,11 @@ require_abstract: true
 
 # Delay between PubMed API calls in seconds (0.4 = safe default without API key).
 rate_limit_delay: 0.4
+
+# TODO: Optional additional search profiles for related conditions.
+# Each profile runs as an independent PubMed query; results are
+# deduplicated by PMID before entering the filter stage.
+# search_profiles:
+#   - name: TODO
+#     mesh_terms:
+#       - "TODO: related mesh term"
