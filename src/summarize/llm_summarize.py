@@ -111,6 +111,7 @@ def _summarize_one(
         triage_rationale=record.triage_rationale,
         feedback_url=feedback_url,
         raw_llm_response=raw_response,
+        source_topic=record.source_topic,
     )
 
 

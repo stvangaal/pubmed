@@ -7,10 +7,11 @@ retmax: 200
 require_abstract: true
 rate_limit_delay: 0.4
 
-# Additional search profiles for stroke-adjacent conditions.
-# Each profile runs as an independent PubMed query; results are
+# Additional topics for stroke-adjacent conditions.
+# Each topic runs as an independent PubMed query; results are
 # deduplicated by PMID before entering the filter stage.
-search_profiles:
+# Optional: add triage_prompt_file per topic for custom triage scoring.
+topics:
   - name: atrial-fibrillation
     mesh_terms:
       - "atrial fibrillation"

@@ -7,9 +7,27 @@ Uses tiered rendering: full summary for high-scoring articles, short
 teaser with blog link for the rest.
 """
 
+from collections import OrderedDict
 from pathlib import Path
 
 from src.models import BlogPage, LiteratureSummary, EmailDigest, DistributeConfig
+
+
+def _group_by_topic(
+    summaries: list[LiteratureSummary],
+) -> OrderedDict[str, list[LiteratureSummary]]:
+    """Group summaries by source_topic, preserving insertion order."""
+    groups: OrderedDict[str, list[LiteratureSummary]] = OrderedDict()
+    for s in summaries:
+        groups.setdefault(s.source_topic, []).append(s)
+    return groups
+
+
+def _topic_label(topic_name: str) -> str:
+    """Human-readable label for a topic name."""
+    if not topic_name or topic_name == "primary":
+        return "General"
+    return topic_name.replace("-", " ").title()
 
 
 def _sort_summaries(
@@ -143,26 +161,48 @@ def build_digest(
     else:
         sorted_summaries = _sort_summaries(summaries, config.sort_by)
 
+        # --- Group by topic if articles have source_topic set ---
+        topic_groups = _group_by_topic(sorted_summaries)
+        has_topics = len(topic_groups) > 1 or (
+            len(topic_groups) == 1 and next(iter(topic_groups)) != ""
+        )
+
         # --- Table of contents ---
-        md_toc = "\n".join(f"- {s.title}" for s in sorted_summaries)
-        pt_toc = "\n".join(f"- {s.title}" for s in sorted_summaries)
+        if has_topics:
+            toc_lines = []
+            for topic_name, group in topic_groups.items():
+                label = _topic_label(topic_name)
+                toc_lines.append(f"**{label}**")
+                for s in group:
+                    toc_lines.append(f"- {s.title}")
+            md_toc = "\n".join(toc_lines)
+            pt_toc = md_toc.replace("**", "")
+        else:
+            md_toc = "\n".join(f"- {s.title}" for s in sorted_summaries)
+            pt_toc = "\n".join(f"- {s.title}" for s in sorted_summaries)
 
         # --- Article summaries ---
         md_parts = []
         pt_parts = []
 
-        for s in sorted_summaries:
-            if s.triage_score >= config.full_summary_threshold:
-                md_parts.append(_render_full_markdown(s))
-                pt_parts.append(_render_full_plain(s))
-            else:
-                blog_url = (
-                    blog_page.article_urls.get(s.pmid)
-                    if blog_page
-                    else None
-                )
-                md_parts.append(_render_short_markdown(s, blog_url))
-                pt_parts.append(_render_short_plain(s, blog_url))
+        for topic_name, group in topic_groups.items():
+            if has_topics:
+                label = _topic_label(topic_name)
+                md_parts.append(f"## {label}\n")
+                pt_parts.append(f"=== {label} ===\n")
+
+            for s in group:
+                if s.triage_score >= config.full_summary_threshold:
+                    md_parts.append(_render_full_markdown(s))
+                    pt_parts.append(_render_full_plain(s))
+                else:
+                    blog_url = (
+                        blog_page.article_urls.get(s.pmid)
+                        if blog_page
+                        else None
+                    )
+                    md_parts.append(_render_short_markdown(s, blog_url))
+                    pt_parts.append(_render_short_plain(s, blog_url))
 
         markdown_body = md_toc + "\n\n---\n\n" + "\n\n".join(md_parts)
         plain_body = pt_toc + "\n\n---\n\n" + "\n\n".join(pt_parts)

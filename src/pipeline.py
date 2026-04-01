@@ -92,10 +92,17 @@ def run():
 
     # --- Stage 2b: Filter (LLM triage) ---
     logger.info("Stage 2b: LLM triage")
+    # Build per-topic prompt overrides from search config topics
+    topic_prompts = {
+        t.name: t.triage_prompt_file
+        for t in search_config.topics
+        if t.triage_prompt_file
+    }
     above, below = llm_triage(
         passed,
         filter_config.llm_triage,
         seen_pmids_path=filter_config.llm_triage.seen_pmids_file,
+        topic_prompts=topic_prompts or None,
     )
     logger.info(f"  {len(above)} above threshold, {len(below)} below")
 
