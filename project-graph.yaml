@@ -1,16 +1,61 @@
 # Do not edit manually — regenerate with: bash scripts/generate-graph.sh
 ---
 nodes:
-  - id: spec:consolidate-spec
+  - id: spec:blog-publish
     type: spec
-    name: consolidate-spec
-    status: draft
-    path: docs/specs/consolidate-spec.spec.md
-  - id: spec:git-workflow-tooling
+    name: blog-publish
+    status: ready
+    path: docs/specs/blog-publish.spec.md
+  - id: spec:digest-build
     type: spec
-    name: git-workflow-tooling
+    name: digest-build
+    status: ready
+    path: docs/specs/digest-build.spec.md
+  - id: spec:domain-config
+    type: spec
+    name: domain-config
+    status: implemented
+    path: docs/specs/domain-config.spec.md
+  - id: spec:email-send
+    type: spec
+    name: email-send
+    status: ready
+    path: docs/specs/email-send.spec.md
+  - id: spec:llm-summarize
+    type: spec
+    name: llm-summarize
+    status: ready
+    path: docs/specs/llm-summarize.spec.md
+  - id: spec:llm-triage
+    type: spec
+    name: llm-triage
+    status: ready
+    path: docs/specs/llm-triage.spec.md
+  - id: spec:neurology-setup
+    type: spec
+    name: neurology-setup
     status: draft
-    path: docs/specs/git-workflow-tooling.spec.md
+    path: docs/specs/neurology-setup.spec.md
+  - id: spec:project-infrastructure
+    type: spec
+    name: project-infrastructure
+    status: draft
+    path: docs/specs/project-infrastructure.spec.md
+  - id: spec:pubmed-query
+    type: spec
+    name: pubmed-query
+    status: ready
+    path: docs/specs/pubmed-query.spec.md
+  - id: spec:rule-filter
+    type: spec
+    name: rule-filter
+    status: ready
+    path: docs/specs/rule-filter.spec.md
+  - id: spec:stroke-migration
+    type: spec
+    name: stroke-migration
+    status: implemented
+    path: docs/specs/stroke-migration.spec.md
   - id: skill:architect
     type: skill
     layer: 0
@@ -134,9 +179,6 @@ nodes:
   - id: script:bootstrap-project
     type: script
     path: scripts/bootstrap-project.sh
-  - id: script:file-v2-issues
-    type: script
-    path: scripts/file-v2-issues.sh
   - id: script:generate-graph
     type: script
     path: scripts/generate-graph.sh
@@ -146,9 +188,6 @@ nodes:
   - id: script:health-check
     type: script
     path: scripts/health-check.sh
-  - id: script:parse-frontmatter
-    type: script
-    path: scripts/parse-frontmatter.sh
   - id: script:sync-contracts
     type: script
     path: scripts/sync-contracts.sh
@@ -183,24 +222,265 @@ nodes:
   - id: doc:contracts
     type: document
     path: contracts.yaml
+  - id: def:blog-config
+    type: definition
+    version: v0
+    path: docs/definitions/blog-config.md
+  - id: def:blog-page
+    type: definition
+    version: v0
+    path: docs/definitions/blog-page.md
+  - id: def:distribute-config
+    type: definition
+    version: v0
+    path: docs/definitions/distribute-config.md
+  - id: def:email-config
+    type: definition
+    version: v0
+    path: docs/definitions/email-config.md
+  - id: def:email-digest
+    type: definition
+    version: v0
+    path: docs/definitions/email-digest.md
+  - id: def:filter-config
+    type: definition
+    version: v0
+    path: docs/definitions/filter-config.md
+  - id: def:literature-summary
+    type: definition
+    version: v0
+    path: docs/definitions/literature-summary.md
+  - id: def:pubmed-record
+    type: definition
+    version: v0
+    path: docs/definitions/pubmed-record.md
+  - id: def:search-config
+    type: definition
+    version: v0
+    path: docs/definitions/search-config.md
+  - id: def:summary-config
+    type: definition
+    version: v0
+    path: docs/definitions/summary-config.md
 edges:
-  - from: spec:consolidate-spec
-    to: "file:.claude/skills/consolidate/SKILL.md"
+  - from: spec:pubmed-query
+    to: "file:src/search/__init__.py"
     rel: owns
-  - from: spec:git-workflow-tooling
-    to: "file:.githooks/pre-commit"
+  - from: spec:pubmed-query
+    to: "file:src/search/pubmed_query.py"
     rel: owns
-  - from: spec:git-workflow-tooling
-    to: "file:.claude/hooks/pre-commit-branch-check.sh"
+  - from: spec:pubmed-query
+    to: "file:src/search/date_normalize.py"
     rel: owns
-  - from: spec:git-workflow-tooling
-    to: "file:.claude/skills/pr/SKILL.md"
+  - from: spec:pubmed-query
+    to: "file:tests/search/__init__.py"
     rel: owns
-  - from: spec:git-workflow-tooling
-    to: "file:.claude/skills/security-review/SKILL.md"
+  - from: spec:pubmed-query
+    to: "file:tests/search/test_pubmed_query.py"
     rel: owns
-  - from: spec:git-workflow-tooling
-    to: "file:scripts/bootstrap-project.sh"
+  - from: spec:pubmed-query
+    to: "file:tests/search/test_date_normalize.py"
+    rel: owns
+  - from: spec:pubmed-query
+    to: "file:tests/search/test_multi_search.py"
+    rel: owns
+  - from: spec:pubmed-query
+    to: "file:config/search-config.yaml"
+    rel: owns
+  - from: spec:rule-filter
+    to: "file:src/filter/__init__.py"
+    rel: owns
+  - from: spec:rule-filter
+    to: "file:src/filter/rule_filter.py"
+    rel: owns
+  - from: spec:rule-filter
+    to: "file:tests/filter/__init__.py"
+    rel: owns
+  - from: spec:rule-filter
+    to: "file:tests/filter/test_rule_filter.py"
+    rel: owns
+  - from: spec:llm-triage
+    to: "file:src/filter/llm_triage.py"
+    rel: owns
+  - from: spec:llm-triage
+    to: "file:tests/filter/test_llm_triage.py"
+    rel: owns
+  - from: spec:llm-triage
+    to: "file:config/prompts/triage-prompt.md"
+    rel: owns
+  - from: spec:llm-triage
+    to: "file:config/filter-config.yaml"
+    rel: owns
+  - from: spec:llm-summarize
+    to: "file:src/summarize/__init__.py"
+    rel: owns
+  - from: spec:llm-summarize
+    to: "file:src/summarize/llm_summarize.py"
+    rel: owns
+  - from: spec:llm-summarize
+    to: "file:src/summarize/parse_summary.py"
+    rel: owns
+  - from: spec:llm-summarize
+    to: "file:tests/summarize/__init__.py"
+    rel: owns
+  - from: spec:llm-summarize
+    to: "file:tests/summarize/test_llm_summarize.py"
+    rel: owns
+  - from: spec:llm-summarize
+    to: "file:tests/summarize/test_parse_summary.py"
+    rel: owns
+  - from: spec:llm-summarize
+    to: "file:config/summary-config.yaml"
+    rel: owns
+  - from: spec:llm-summarize
+    to: "file:config/prompts/summary-prompt.md"
+    rel: owns
+  - from: spec:digest-build
+    to: "file:src/distribute/__init__.py"
+    rel: owns
+  - from: spec:digest-build
+    to: "file:src/distribute/digest_build.py"
+    rel: owns
+  - from: spec:digest-build
+    to: "file:tests/distribute/__init__.py"
+    rel: owns
+  - from: spec:digest-build
+    to: "file:tests/distribute/test_digest_build.py"
+    rel: owns
+  - from: spec:digest-build
+    to: "file:config/distribute-config.yaml"
+    rel: owns
+  - from: spec:blog-publish
+    to: "file:src/distribute/blog_publish.py"
+    rel: owns
+  - from: spec:blog-publish
+    to: "file:tests/distribute/test_blog_publish.py"
+    rel: owns
+  - from: spec:blog-publish
+    to: "file:config/blog-config.yaml"
+    rel: owns
+  - from: spec:blog-publish
+    to: "file:config/templates/blog-post.md"
+    rel: owns
+  - from: spec:blog-publish
+    to: "file:config/templates/blog-index.md"
+    rel: owns
+  - from: spec:email-send
+    to: "file:src/distribute/email_send.py"
+    rel: owns
+  - from: spec:email-send
+    to: "file:tests/distribute/test_email_send.py"
+    rel: owns
+  - from: spec:email-send
+    to: "file:config/email-config.yaml"
+    rel: owns
+  - from: spec:project-infrastructure
+    to: "file:src/__init__.py"
+    rel: owns
+  - from: spec:project-infrastructure
+    to: "file:tests/__init__.py"
+    rel: owns
+  - from: spec:project-infrastructure
+    to: "file:src/models.py"
+    rel: owns
+  - from: spec:project-infrastructure
+    to: "file:src/config.py"
+    rel: owns
+  - from: spec:project-infrastructure
+    to: "file:src/pipeline.py"
+    rel: owns
+  - from: spec:project-infrastructure
+    to: "file:requirements.txt"
+    rel: owns
+  - from: spec:project-infrastructure
+    to: "file:.gitignore"
+    rel: owns
+  - from: spec:domain-config
+    to: "file:config/domains/_template/domain.yaml"
+    rel: owns
+  - from: spec:domain-config
+    to: "file:config/domains/_template/search-config.yaml"
+    rel: owns
+  - from: spec:domain-config
+    to: "file:config/domains/_template/filter-config.yaml"
+    rel: owns
+  - from: spec:domain-config
+    to: "file:config/domains/_template/summary-config.yaml"
+    rel: owns
+  - from: spec:domain-config
+    to: "file:config/domains/_template/distribute-config.yaml"
+    rel: owns
+  - from: spec:domain-config
+    to: "file:config/domains/_template/blog-config.yaml"
+    rel: owns
+  - from: spec:domain-config
+    to: "file:config/domains/_template/email-config.yaml"
+    rel: owns
+  - from: spec:domain-config
+    to: "file:config/domains/_template/prompts/triage-prompt.md"
+    rel: owns
+  - from: spec:domain-config
+    to: "file:config/domains/_template/prompts/summary-prompt.md"
+    rel: owns
+  - from: spec:domain-config
+    to: "file:config/domains/CHANGELOG.md"
+    rel: owns
+  - from: spec:domain-config
+    to: "file:tests/test_domain_config.py"
+    rel: owns
+  - from: spec:stroke-migration
+    to: "file:config/domains/stroke/domain.yaml"
+    rel: owns
+  - from: spec:stroke-migration
+    to: "file:config/domains/stroke/search-config.yaml"
+    rel: owns
+  - from: spec:stroke-migration
+    to: "file:config/domains/stroke/filter-config.yaml"
+    rel: owns
+  - from: spec:stroke-migration
+    to: "file:config/domains/stroke/summary-config.yaml"
+    rel: owns
+  - from: spec:stroke-migration
+    to: "file:config/domains/stroke/distribute-config.yaml"
+    rel: owns
+  - from: spec:stroke-migration
+    to: "file:config/domains/stroke/blog-config.yaml"
+    rel: owns
+  - from: spec:stroke-migration
+    to: "file:config/domains/stroke/email-config.yaml"
+    rel: owns
+  - from: spec:stroke-migration
+    to: "file:config/domains/stroke/prompts/triage-prompt.md"
+    rel: owns
+  - from: spec:stroke-migration
+    to: "file:config/domains/stroke/prompts/summary-prompt.md"
+    rel: owns
+  - from: spec:neurology-setup
+    to: "file:config/domains/neurology/domain.yaml"
+    rel: owns
+  - from: spec:neurology-setup
+    to: "file:config/domains/neurology/search-config.yaml"
+    rel: owns
+  - from: spec:neurology-setup
+    to: "file:config/domains/neurology/filter-config.yaml"
+    rel: owns
+  - from: spec:neurology-setup
+    to: "file:config/domains/neurology/summary-config.yaml"
+    rel: owns
+  - from: spec:neurology-setup
+    to: "file:config/domains/neurology/distribute-config.yaml"
+    rel: owns
+  - from: spec:neurology-setup
+    to: "file:config/domains/neurology/blog-config.yaml"
+    rel: owns
+  - from: spec:neurology-setup
+    to: "file:config/domains/neurology/email-config.yaml"
+    rel: owns
+  - from: spec:neurology-setup
+    to: "file:config/domains/neurology/prompts/triage-prompt.md"
+    rel: owns
+  - from: spec:neurology-setup
+    to: "file:config/domains/neurology/prompts/summary-prompt.md"
     rel: owns
   - from: skill:architect
     to: skill:init-project
@@ -376,36 +656,9 @@ edges:
   - from: skill:validate-refs
     to: skill:generate-spec
     rel: suggests
-  - from: spec:consolidate-spec
-    to: "doc:spec-minimal"
+  - from: spec:stroke-migration
+    to: "doc:{name}"
     rel: requires
-  - from: spec:consolidate-spec
-    to: "doc:spec-full"
-    rel: requires
-  - from: spec:consolidate-spec
-    to: "doc:register"
-    rel: requires
-  - from: spec:consolidate-spec
-    to: "doc:spec-workflow"
-    rel: requires
-  - from: spec:git-workflow-tooling
-    to: "doc:spec-workflow"
-    rel: requires
-  - from: spec:git-workflow-tooling
-    to: "doc:register"
-    rel: requires
-  - from: spec:git-workflow-tooling
-    to: "doc:bootstrap-project"
-    rel: requires
-  - from: spec:consolidate-spec
-    to: skill:consolidate
-    rel: provides
-  - from: spec:git-workflow-tooling
-    to: skill:pr
-    rel: provides
-  - from: spec:git-workflow-tooling
-    to: skill:security-review
-    rel: provides
   - from: skill:architect
     to: stage:governance
     rel: belongs-to-stage

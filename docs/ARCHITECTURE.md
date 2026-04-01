@@ -180,18 +180,17 @@ Architecture decisions for the current scope deliberately leave room for planned
 
 | Phase | Specs | Goal |
 |-------|-------|------|
-| Phase 0 | project-infrastructure, test-infrastructure | Bootstrap project structure, CI, and test framework |
+| Phase 0 | project-infrastructure | Bootstrap project structure: shared models, config loading, pipeline orchestrator |
 | Phase 1 | pubmed-query, rule-filter, llm-triage | Search and filter stages — the data acquisition half of the pipeline |
 | Phase 2 | llm-summarize, digest-build | Summarize and distribute stages — the output half |
 | Phase 3 | blog-publish, email-send | Blog archive on GitHub Pages + automated email delivery via Resend |
-| Phase 4 | domain-config, stroke-migration (disposable) | Multi-domain infrastructure — domain-scoped config packages, `--domain` CLI, schema versioning, migration of stroke from flat to domain layout |
+| Phase 4 | domain-config, stroke-migration (disposable) | Multi-domain infrastructure — domain-scoped config packages, `--domain` CLI, schema versioning. Active domains: stroke, neurology |
 
 ## Dependency Graph
 
 ```
 Phase 0:
   1. project-infrastructure (no dependencies)
-  2. test-infrastructure (no dependencies)
 
 Phase 1:
   3. pubmed-query (no cross-spec dependencies)
