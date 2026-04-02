@@ -44,7 +44,7 @@ Score rule-filtered PubMed records for clinical relevance using an LLM. This is 
 ## Behaviour
 
 ### Input
-A list of `PubmedRecord` objects (post-rule-filter, status `@retrieved`) and an `LLMTriageConfig`.
+A list of `PubmedRecord` objects (post-rule-filter, status `@retrieved`) and an `LLMTriageConfig`. The input may include preindex articles (with `preindex=True`) that lack MeSH terms and specific article types. LLM triage scores these identically based on title, abstract, and journal. The `preindex` and `source_topic` fields are preserved through triage. Cross-run dedup via `seen_pmids.json` prevents articles found by preindex search in one run from being re-triaged when the MeSH search finds them in a later run.
 
 ### Prompt Structure
 

@@ -71,6 +71,8 @@ For each filtered record:
 6. **Carry forward source data.** Copy from the source `PubmedRecord` into the `LiteratureSummary`:
    - `title`, `journal`, `pub_date` — for plain-text rendering and sorting
    - `triage_score`, `triage_rationale` — for digest ordering and auditing
+   - `source_topic` — for digest grouping by topic
+   - `preindex` — for downstream labeling of articles found before MeSH indexing
 
 7. **Assemble the `LiteratureSummary`.** Populate all fields including `summary_short`. Retain `raw_llm_response` for auditing.
 

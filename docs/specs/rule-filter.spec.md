@@ -43,7 +43,7 @@ Apply deterministic, cost-free filtering to the raw PubMed search results. Remov
 ## Behaviour
 
 ### Input
-A list of `PubmedRecord` objects with status `@retrieved` and a `RuleFilterConfig`.
+A list of `PubmedRecord` objects with status `@retrieved` and a `RuleFilterConfig`. The input may include both MeSH-indexed and preindex articles (distinguished by the `preindex` flag). All articles are filtered identically — the `preindex` and `source_topic` fields are preserved unchanged through filtering.
 
 ### Processing
 For each record, apply filters in this order (short-circuit on first exclusion):
