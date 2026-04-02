@@ -274,6 +274,15 @@ class EmailConfig:
 
 
 @dataclass
+class WordPressConfig:
+    """See docs/definitions/wp-config.md."""
+
+    enabled: bool = False
+    site_url: str = ""
+    clinical_topics_taxonomy: str = "clinical_topics"
+
+
+@dataclass
 class BlogPage:
     """See docs/definitions/blog-page.md."""
 

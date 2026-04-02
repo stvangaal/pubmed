@@ -17,6 +17,7 @@ CURRENT_CONFIG_VERSIONS = {
     "distribute-config": "1",
     "blog-config": "1",
     "email-config": "1",
+    "wp-config": "1",
 }
 
 # Keep for backward compat with tests that reference it directly.
@@ -34,6 +35,7 @@ from src.models import (
     BlogConfig,
     BlogTemplatesConfig,
     EmailConfig,
+    WordPressConfig,
 )
 
 
@@ -169,6 +171,19 @@ def load_email_config(
     _check_config_version(data, "email-config", domain)
     data.pop("config_version", None)
     return EmailConfig(**data)
+
+
+def load_wp_config(
+    path: str | None = None,
+    domain: str | None = None,
+) -> WordPressConfig:
+    resolved = path or _config_path("wp-config.yaml", domain)
+    if not Path(resolved).exists():
+        return WordPressConfig()
+    data = _load_yaml(resolved)
+    _check_config_version(data, "wp-config", domain)
+    data.pop("config_version", None)
+    return WordPressConfig(**data)
 
 
 def load_blog_config(

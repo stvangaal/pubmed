@@ -14,6 +14,7 @@ from src.config import (
     load_distribute_config,
     load_blog_config,
     load_email_config,
+    load_wp_config,
 )
 from src.search.pubmed_query import multi_search
 from src.filter.rule_filter import rule_filter
@@ -22,6 +23,7 @@ from src.summarize.llm_summarize import summarize
 from src.distribute.blog_publish import publish_blog
 from src.distribute.digest_build import build_digest
 from src.distribute.email_send import send_digest, send_rejection_report
+from src.distribute.wp_publish import publish_to_wordpress
 
 logging.basicConfig(
     level=logging.INFO,
@@ -72,6 +74,7 @@ def run():
     blog_config = load_blog_config(domain=domain)
     distribute_config = load_distribute_config(domain=domain)
     email_config = load_email_config(domain=domain)
+    wp_config = load_wp_config(domain=domain)
 
     # --- Test mode overrides ---
     if test_mode:
@@ -79,6 +82,7 @@ def run():
         search_config.retmax = 20
         filter_config.llm_triage.max_articles = 3
         blog_config.publish = False
+        wp_config.enabled = False
         email_config.to_addresses = ["stephen@vangaal.ca"]
         email_config.owner_email = "stephen@vangaal.ca"
 
@@ -145,6 +149,14 @@ def run():
         logger.info(f"  Published to: {blog_page.page_url}")
     else:
         logger.info("  Blog page rendered but not published")
+
+    # --- Stage 4a-wp: WordPress publish ---
+    logger.info("Stage 4a-wp: WordPress publish")
+    wp_posts = publish_to_wordpress(summaries, wp_config)
+    if wp_posts:
+        logger.info("  Published %d articles to WordPress", len(wp_posts))
+    else:
+        logger.info("  WordPress publish skipped or no articles published")
 
     # --- Stage 4b: Build email digest ---
     logger.info("Stage 4b: Build email digest")

@@ -1,0 +1,29 @@
+# owner: wp-publish
+name: Weekly Member Digest
+
+on:
+  schedule:
+    - cron: '0 18 * * 1'  # Every Monday at 2pm EDT (18:00 UTC), 2h after pipeline
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  member-digest:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        domain: [stroke]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Send member digests
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          WP_DIGEST_API_SECRET: ${{ secrets.WP_DIGEST_API_SECRET }}
+        run: python3 -m src.distribute.wp_digest --domain ${{ matrix.domain }}
