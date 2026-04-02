@@ -97,6 +97,7 @@ class LiteratureSummary:
     raw_llm_response: str
     source_topic: str = ""
     preindex: bool = False
+    article_types: list[str] = field(default_factory=list)
 
 
 @dataclass

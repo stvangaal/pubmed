@@ -13,21 +13,29 @@ from pathlib import Path
 from src.models import BlogPage, LiteratureSummary, LLMUsage, EmailDigest, DistributeConfig
 
 
-def _group_by_topic(
+def _group_by_subdomain(
     summaries: list[LiteratureSummary],
 ) -> OrderedDict[str, list[LiteratureSummary]]:
-    """Group summaries by source_topic, preserving insertion order."""
+    """Group summaries by subdomain, preserving insertion order."""
     groups: OrderedDict[str, list[LiteratureSummary]] = OrderedDict()
     for s in summaries:
-        groups.setdefault(s.source_topic, []).append(s)
+        groups.setdefault(s.subdomain or "General", []).append(s)
     return groups
 
 
-def _topic_label(topic_name: str) -> str:
-    """Human-readable label for a topic name."""
-    if not topic_name or topic_name == "primary":
-        return "General"
-    return topic_name.replace("-", " ").title()
+def _subdomain_label(name: str) -> str:
+    """Human-readable label for a subdomain name."""
+    return name if name else "General"
+
+
+def _is_narrative_review(summary: LiteratureSummary) -> bool:
+    """True if the article is a narrative review (not systematic/meta-analysis)."""
+    types_lower = {t.lower() for t in summary.article_types}
+    if "review" not in types_lower:
+        return False
+    if types_lower & {"systematic review", "meta-analysis"}:
+        return False
+    return True
 
 
 def _sort_summaries(
@@ -162,8 +170,8 @@ def build_digest(
     else:
         sorted_summaries = _sort_summaries(summaries, config.sort_by)
 
-        # --- Group by topic if articles have source_topic set ---
-        topic_groups = _group_by_topic(sorted_summaries)
+        # --- Group by subdomain ---
+        topic_groups = _group_by_subdomain(sorted_summaries)
         has_topics = len(topic_groups) > 1 or (
             len(topic_groups) == 1 and next(iter(topic_groups)) != ""
         )
@@ -172,7 +180,7 @@ def build_digest(
         if has_topics:
             toc_lines = []
             for topic_name, group in topic_groups.items():
-                label = _topic_label(topic_name)
+                label = _subdomain_label(topic_name)
                 toc_lines.append(f"**{label}**")
                 for s in group:
                     toc_lines.append(f"- {s.title}")
@@ -188,12 +196,16 @@ def build_digest(
 
         for topic_name, group in topic_groups.items():
             if has_topics:
-                label = _topic_label(topic_name)
+                label = _subdomain_label(topic_name)
                 md_parts.append(f"## {label}\n")
                 pt_parts.append(f"=== {label} ===\n")
 
             for s in group:
-                if s.triage_score >= config.full_summary_threshold:
+                is_full = (
+                    s.triage_score >= config.full_summary_threshold
+                    and not _is_narrative_review(s)
+                )
+                if is_full:
                     md_parts.append(_render_full_markdown(s))
                     pt_parts.append(_render_full_plain(s))
                 else:

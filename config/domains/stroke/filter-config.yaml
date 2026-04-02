@@ -40,7 +40,7 @@ llm_triage:
   model: "claude-sonnet-4-6"
   max_tokens: 150
   score_threshold: 0.70
-  max_articles: 10
+  max_articles: 15
   use_prompt_caching: true
   triage_prompt_file: "config/domains/stroke/prompts/triage-prompt.md"
   seen_pmids_file: "data/domains/stroke/seen-pmids.json"
