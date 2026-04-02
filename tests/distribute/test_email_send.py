@@ -3,7 +3,7 @@
 
 from unittest.mock import patch, MagicMock
 
-from src.distribute.email_send import build_rejection_report, send_rejection_report, _markdown_to_html
+from src.distribute.email_send import build_rejection_report, send_rejection_report, markdown_to_html
 from src.models import EmailConfig, PubmedRecord
 
 
@@ -28,19 +28,19 @@ def _make_record(pmid: str, title: str, journal: str, score: float, rationale: s
 
 class TestMarkdownToHtml:
     def test_heading_converted_to_h2(self):
-        result = _markdown_to_html("## Acute Treatment")
+        result = markdown_to_html("## Acute Treatment")
         assert "<h2>Acute Treatment</h2>" in result
 
     def test_heading_with_inline_formatting(self):
-        result = _markdown_to_html("## **Bold** heading")
+        result = markdown_to_html("## **Bold** heading")
         assert "<h2><strong>Bold</strong> heading</h2>" in result
 
     def test_heading_not_wrapped_in_p(self):
-        result = _markdown_to_html("## Prevention")
+        result = markdown_to_html("## Prevention")
         assert "<p>" not in result
 
     def test_regular_text_still_wrapped_in_p(self):
-        result = _markdown_to_html("Some regular text")
+        result = markdown_to_html("Some regular text")
         assert "<p>Some regular text</p>" in result
 
 

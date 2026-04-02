@@ -2,9 +2,9 @@
 """Tests for digest building: subdomain grouping and narrative review detection."""
 
 from src.distribute.digest_build import (
-    _group_by_subdomain,
-    _is_narrative_review,
-    _subdomain_label,
+    group_by_subdomain,
+    is_narrative_review,
+    subdomain_label,
 )
 from src.models import LiteratureSummary
 
@@ -46,14 +46,14 @@ class TestGroupBySubdomain:
             _make_summary(pmid="2", tags=["Imaging"]),
             _make_summary(pmid="3", tags=["Prevention"]),
         ]
-        groups = _group_by_subdomain(summaries)
+        groups = group_by_subdomain(summaries)
         assert list(groups.keys()) == ["Prevention", "Imaging"]
         assert len(groups["Prevention"]) == 2
         assert len(groups["Imaging"]) == 1
 
     def test_empty_tags_falls_back_to_general(self):
         summaries = [_make_summary(pmid="1", tags=[])]
-        groups = _group_by_subdomain(summaries)
+        groups = group_by_subdomain(summaries)
         assert "General" in groups
 
     def test_preserves_insertion_order(self):
@@ -62,7 +62,7 @@ class TestGroupBySubdomain:
             _make_summary(pmid="2", tags=["Acute Treatment"]),
             _make_summary(pmid="3", tags=["Imaging"]),
         ]
-        groups = _group_by_subdomain(summaries)
+        groups = group_by_subdomain(summaries)
         assert list(groups.keys()) == ["Imaging", "Acute Treatment"]
 
     def test_groups_by_primary_tag(self):
@@ -71,7 +71,7 @@ class TestGroupBySubdomain:
             _make_summary(pmid="1", tags=["Imaging", "Prevention"]),
             _make_summary(pmid="2", tags=["Prevention"]),
         ]
-        groups = _group_by_subdomain(summaries)
+        groups = group_by_subdomain(summaries)
         assert list(groups.keys()) == ["Imaging", "Prevention"]
         assert len(groups["Imaging"]) == 1
         assert len(groups["Prevention"]) == 1
@@ -79,37 +79,37 @@ class TestGroupBySubdomain:
 
 class TestSubdomainLabel:
     def test_returns_name_as_is(self):
-        assert _subdomain_label("Acute Treatment") == "Acute Treatment"
+        assert subdomain_label("Acute Treatment") == "Acute Treatment"
 
     def test_empty_returns_general(self):
-        assert _subdomain_label("") == "General"
+        assert subdomain_label("") == "General"
 
 
 class TestIsNarrativeReview:
     def test_plain_review_is_narrative(self):
         s = _make_summary(article_types=["Journal Article", "Review"])
-        assert _is_narrative_review(s) is True
+        assert is_narrative_review(s) is True
 
     def test_review_alone_is_narrative(self):
         s = _make_summary(article_types=["Review"])
-        assert _is_narrative_review(s) is True
+        assert is_narrative_review(s) is True
 
     def test_systematic_review_is_not_narrative(self):
         s = _make_summary(article_types=["Review", "Systematic Review"])
-        assert _is_narrative_review(s) is False
+        assert is_narrative_review(s) is False
 
     def test_meta_analysis_is_not_narrative(self):
         s = _make_summary(article_types=["Review", "Meta-Analysis"])
-        assert _is_narrative_review(s) is False
+        assert is_narrative_review(s) is False
 
     def test_no_review_type_is_not_narrative(self):
         s = _make_summary(article_types=["Randomized Controlled Trial"])
-        assert _is_narrative_review(s) is False
+        assert is_narrative_review(s) is False
 
     def test_empty_types_is_not_narrative(self):
         s = _make_summary(article_types=[])
-        assert _is_narrative_review(s) is False
+        assert is_narrative_review(s) is False
 
     def test_case_insensitive(self):
         s = _make_summary(article_types=["review"])
-        assert _is_narrative_review(s) is True
+        assert is_narrative_review(s) is True

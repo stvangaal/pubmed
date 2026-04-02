@@ -10,6 +10,7 @@ from pathlib import Path
 
 import anthropic
 
+from src.llm_client import call_llm_with_retry
 from src.models import LiteratureSummary, LLMUsage, PubmedRecord, SummaryConfig
 from src.summarize.parse_summary import parse_summary
 
@@ -155,26 +156,15 @@ def _call_llm(
 
     Returns the text response, or None if both attempts fail.
     """
-    for attempt in range(2):
-        try:
-            response = client.messages.create(
-                model=config.model,
-                max_tokens=config.max_tokens,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            if usage_tracker:
-                usage_tracker.add_response(response.usage)
-            return response.content[0].text
-        except Exception:
-            if attempt == 0:
-                logger.warning(
-                    "LLM call failed (attempt 1), retrying...", exc_info=True
-                )
-            else:
-                logger.error(
-                    "LLM call failed (attempt 2), giving up.", exc_info=True
-                )
-    return None
+    return call_llm_with_retry(
+        client,
+        {
+            "model": config.model,
+            "max_tokens": config.max_tokens,
+            "messages": [{"role": "user", "content": prompt}],
+        },
+        usage_tracker,
+    )
 
 
 def _build_feedback_url(config: SummaryConfig, pmid: str) -> str:

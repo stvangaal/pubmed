@@ -145,10 +145,6 @@ class Topic:
     triage_prompt_file: str | None = None
 
 
-# Backward-compat alias
-SearchProfile = Topic
-
-
 @dataclass
 class SearchConfig:
     """See docs/definitions/search-config.md."""

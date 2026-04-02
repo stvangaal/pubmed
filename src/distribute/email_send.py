@@ -3,6 +3,7 @@
 
 import logging
 import os
+import re
 
 import resend
 
@@ -17,6 +18,16 @@ from src.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _init_resend() -> bool:
+    """Set resend.api_key from the environment. Returns False if unset."""
+    api_key = os.environ.get("RESEND_API_KEY")
+    if not api_key:
+        logger.warning("RESEND_API_KEY not set, skipping email send")
+        return False
+    resend.api_key = api_key
+    return True
 
 
 def send_digest(
@@ -73,12 +84,8 @@ def send_digest(
         logger.warning("No recipients configured in email-config.yaml, skipping")
         return False
 
-    api_key = os.environ.get("RESEND_API_KEY")
-    if not api_key:
-        logger.warning("RESEND_API_KEY not set, skipping email send")
+    if not _init_resend():
         return False
-
-    resend.api_key = api_key
 
     subject = config.subject.format(
         date_range=digest.date_range,
@@ -90,7 +97,7 @@ def send_digest(
             "from": config.from_address,
             "to": config.to_addresses,
             "subject": subject,
-            "html": _markdown_to_html(digest.markdown),
+            "html": markdown_to_html(digest.markdown),
             "text": digest.plain_text,
         }
         result = resend.Emails.send(params)
@@ -101,14 +108,12 @@ def send_digest(
         return False
 
 
-def _markdown_to_html(markdown: str) -> str:
+def markdown_to_html(markdown: str) -> str:
     """Convert markdown digest to basic HTML for email rendering.
 
     Uses simple line-by-line conversion — no external markdown library needed.
     Handles: bold, italic, links, horizontal rules, bullet lists, paragraphs.
     """
-    import re
-
     lines = markdown.split("\n")
     html_lines = []
     in_list = False
@@ -129,7 +134,7 @@ def _markdown_to_html(markdown: str) -> str:
             if not in_list:
                 html_lines.append("<ul>")
                 in_list = True
-            item = _inline_format(stripped[2:])
+            item = inline_format(stripped[2:])
             html_lines.append(f"<li>{item}</li>")
             continue
 
@@ -140,7 +145,7 @@ def _markdown_to_html(markdown: str) -> str:
 
         # Headings: ## text
         if stripped.startswith("## "):
-            heading_text = _inline_format(stripped[3:])
+            heading_text = inline_format(stripped[3:])
             html_lines.append(f"<h2>{heading_text}</h2>")
             continue
 
@@ -149,7 +154,7 @@ def _markdown_to_html(markdown: str) -> str:
             continue
 
         # Regular text with inline formatting
-        html_lines.append(f"<p>{_inline_format(stripped)}</p>")
+        html_lines.append(f"<p>{inline_format(stripped)}</p>")
 
     if in_list:
         html_lines.append("</ul>")
@@ -170,7 +175,6 @@ def _render_cost_lines(
     total_calls = sum(u.call_count for u in llm_usage)
 
     md: list[str] = ["\n**LLM Cost Summary**\n"]
-    pt: list[str] = ["\nLLM Cost Summary\n"]
 
     for u in llm_usage:
         cache_note = ""
@@ -182,25 +186,20 @@ def _render_cost_lines(
             f"{u.input_tokens:,} in / {u.output_tokens:,} out tokens"
             f"{cache_note} — ${u.estimated_cost:.4f}"
         )
-        pt.append(
-            f"- {u.stage} ({u.model}): "
-            f"{u.call_count} calls, "
-            f"{u.input_tokens:,} in / {u.output_tokens:,} out tokens"
-            f"{cache_note} — ${u.estimated_cost:.4f}"
-        )
 
     md.append(
         f"- **Total**: {total_calls} calls, "
         f"{total_input:,} in / {total_output:,} out tokens "
         f"— **${total_cost:.4f}**"
     )
-    pt.append(
-        f"- Total: {total_calls} calls, "
-        f"{total_input:,} in / {total_output:,} out tokens "
-        f"— ${total_cost:.4f}"
-    )
 
+    pt = [_strip_md(line) for line in md]
     return md, pt
+
+
+def _strip_md(text: str) -> str:
+    """Strip markdown bold/italic markers for plain-text output."""
+    return text.replace("**", "").replace("*", "")
 
 
 def build_rejection_report(
@@ -230,19 +229,20 @@ def build_rejection_report(
     )
 
     md_parts: list[str] = []
-    pt_parts: list[str] = []
 
     md_parts.append(f"**Troubleshooting Report — {date_range}**")
-    pt_parts.append(f"Troubleshooting Report — {date_range}")
 
     if min_articles > 0:
         md_parts.append(
             f"\n*Filter settings*: threshold={score_threshold}, "
             f"max={max_articles}, **min={min_articles}** (floor={min_score_floor})\n"
         )
-        pt_parts.append(
-            f"\nFilter settings: threshold={score_threshold}, "
-            f"max={max_articles}, min={min_articles} (floor={min_score_floor})\n"
+
+    def _render_article(r: PubmedRecord) -> str:
+        tag = " *(preindex)*" if r.preindex else ""
+        return (
+            f"- **{r.title}** ({r.journal}){tag} — Score: {r.triage_score}\n"
+            f"  Rationale: {r.triage_rationale}"
         )
 
     if near_misses:
@@ -250,49 +250,20 @@ def build_rejection_report(
             f"\n**Near-Misses ({len(near_misses)})** — scored >= {score_threshold} "
             f"but cut by {max_articles}-article cap\n"
         )
-        pt_parts.append(
-            f"\nNear-Misses ({len(near_misses)}) — scored >= {score_threshold} "
-            f"but cut by {max_articles}-article cap\n"
-        )
-        for r in near_misses:
-            tag = " *(preindex)*" if r.preindex else ""
-            tag_pt = " (preindex)" if r.preindex else ""
-            md_parts.append(
-                f"- **{r.title}** ({r.journal}){tag} — Score: {r.triage_score}\n"
-                f"  Rationale: {r.triage_rationale}"
-            )
-            pt_parts.append(
-                f"- {r.title} ({r.journal}){tag_pt} — Score: {r.triage_score}\n"
-                f"  Rationale: {r.triage_rationale}"
-            )
+        md_parts.extend(_render_article(r) for r in near_misses)
 
     if below_thresh:
         md_parts.append(
             f"\n**Below Threshold ({len(below_thresh)})** — scored < {score_threshold}\n"
         )
-        pt_parts.append(
-            f"\nBelow Threshold ({len(below_thresh)}) — scored < {score_threshold}\n"
-        )
-        for r in below_thresh:
-            tag = " *(preindex)*" if r.preindex else ""
-            tag_pt = " (preindex)" if r.preindex else ""
-            md_parts.append(
-                f"- **{r.title}** ({r.journal}){tag} — Score: {r.triage_score}\n"
-                f"  Rationale: {r.triage_rationale}"
-            )
-            pt_parts.append(
-                f"- {r.title} ({r.journal}){tag_pt} — Score: {r.triage_score}\n"
-                f"  Rationale: {r.triage_rationale}"
-            )
+        md_parts.extend(_render_article(r) for r in below_thresh)
 
     if not near_misses and not below_thresh:
         md_parts.append("\nNo articles were rejected this run.")
-        pt_parts.append("\nNo articles were rejected this run.")
 
     # --- LLM cost breakdown ---
     cost_md, cost_pt = _render_cost_lines(llm_usage or [])
     md_parts.extend(cost_md)
-    pt_parts.extend(cost_pt)
 
     md_parts.append(
         "\n---\n"
@@ -307,21 +278,10 @@ def build_rejection_report(
         "\n"
         "*This report is sent only to the domain owner.*"
     )
-    pt_parts.append(
-        "\n---\n"
-        "Curated by Dr. Stephen van Gaal.\n"
-        "\n"
-        "Article summaries in this digest are generated by AI and may contain "
-        "errors or omissions. This content is intended for licensed healthcare "
-        "professionals and is provided for informational and educational purposes "
-        "only. It does not constitute medical advice, diagnosis, or treatment "
-        "recommendations. Readers should verify important findings against "
-        "primary sources before applying them to patient care.\n"
-        "\n"
-        "This report is sent only to the domain owner."
-    )
 
-    return "\n".join(md_parts), "\n".join(pt_parts)
+    markdown = "\n".join(md_parts)
+    plain_text = _strip_md(markdown)
+    return markdown, plain_text
 
 
 def send_rejection_report(
@@ -357,12 +317,8 @@ def send_rejection_report(
         logger.info("No rejected articles, skipping troubleshooting report")
         return False
 
-    api_key = os.environ.get("RESEND_API_KEY")
-    if not api_key:
-        logger.warning("RESEND_API_KEY not set, skipping troubleshooting report")
+    if not _init_resend():
         return False
-
-    resend.api_key = api_key
 
     markdown, plain_text = build_rejection_report(
         below, date_range, score_threshold, max_articles, llm_usage,
@@ -376,7 +332,7 @@ def send_rejection_report(
             "from": config.from_address,
             "to": [config.owner_email],
             "subject": subject,
-            "html": _markdown_to_html(markdown),
+            "html": markdown_to_html(markdown),
             "text": plain_text,
         }
         result = resend.Emails.send(params)
@@ -389,9 +345,8 @@ def send_rejection_report(
         return False
 
 
-def _inline_format(text: str) -> str:
+def inline_format(text: str) -> str:
     """Apply inline markdown formatting: bold, italic, links."""
-    import re
 
     # Links: [text](url)
     text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r'<a href="\2">\1</a>', text)

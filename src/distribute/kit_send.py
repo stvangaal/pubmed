@@ -15,14 +15,14 @@ from datetime import datetime, timezone
 import httpx
 
 from src.distribute.digest_build import (
-    _group_by_subdomain,
-    _is_narrative_review,
-    _render_full_markdown,
-    _render_short_markdown,
-    _sort_summaries,
-    _subdomain_label,
+    group_by_subdomain,
+    is_narrative_review,
+    render_full_markdown,
+    render_short_markdown,
+    sort_summaries,
+    subdomain_label,
 )
-from src.distribute.email_send import _markdown_to_html
+from src.distribute.email_send import markdown_to_html
 from src.models import (
     BlogPage,
     DistributeConfig,
@@ -97,13 +97,13 @@ def build_kit_broadcast_html(
     )
 
     # Opening is shown to everyone (no conditional)
-    parts = [_markdown_to_html(opening)]
+    parts = [markdown_to_html(opening)]
 
     if not summaries:
         parts.append("<p>No practice-relevant articles identified this week.</p>")
     else:
-        sorted_summaries = _sort_summaries(summaries, config.sort_by)
-        topic_groups = _group_by_subdomain(sorted_summaries)
+        sorted_summaries = sort_summaries(summaries, config.sort_by)
+        topic_groups = group_by_subdomain(sorted_summaries)
 
         parts.append(
             _render_topic_groups(topic_groups, config, blog_page)
@@ -111,7 +111,7 @@ def build_kit_broadcast_html(
 
     # Closing is shown to everyone
     if config.closing:
-        parts.append(_markdown_to_html(config.closing))
+        parts.append(markdown_to_html(config.closing))
 
     return "\n".join(parts)
 
@@ -129,7 +129,7 @@ def _render_topic_groups(
     """
     parts = []
     for topic_name, group in topic_groups.items():
-        label = _subdomain_label(topic_name)
+        label = subdomain_label(topic_name)
 
         # Determine if this section heading needs a Liquid conditional
         section_tags = _collect_section_tags(group, config.universal_threshold)
@@ -154,22 +154,22 @@ def _render_section_html(
     label: str,
 ) -> str:
     """Render a single section with per-article Liquid wrapping."""
-    parts = [_markdown_to_html(f"## {label}\n")]
+    parts = [markdown_to_html(f"## {label}\n")]
 
     for s in group:
         is_full = (
             s.triage_score >= config.full_summary_threshold
-            and not _is_narrative_review(s)
+            and not is_narrative_review(s)
         )
         if is_full:
-            article_md = _render_full_markdown(s)
+            article_md = render_full_markdown(s)
         else:
             blog_url = (
                 blog_page.article_urls.get(s.pmid) if blog_page else None
             )
-            article_md = _render_short_markdown(s, blog_url)
+            article_md = render_short_markdown(s, blog_url)
 
-        article_html = _markdown_to_html(article_md)
+        article_html = markdown_to_html(article_md)
 
         if s.triage_score >= config.universal_threshold:
             parts.append(article_html)
