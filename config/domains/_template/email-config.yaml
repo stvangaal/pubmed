@@ -19,7 +19,7 @@ subject: "TODO: Domain Literature Weekly — {date_range}"
 # TODO: Domain owner email — receives troubleshooting report each run (optional).
 owner_email: "TODO: owner@example.com"
 
-# Subscriber source: "yaml" uses to_addresses above, "supabase" queries
-# active subscribers from Supabase (requires SUPABASE_URL and SUPABASE_SERVICE_KEY).
-# When set to "supabase", to_addresses is used as a fallback if the query returns nothing.
+# Subscriber source: "yaml" sends via Resend to to_addresses above.
+# "kit" creates a Kit broadcast with per-subscriber topic filtering
+# (requires KIT_API_SECRET env var).
 subscriber_source: yaml

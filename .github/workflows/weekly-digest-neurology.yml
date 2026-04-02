@@ -33,8 +33,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          KIT_API_SECRET: ${{ secrets.KIT_API_SECRET }}
         run: python3 -m src.pipeline --domain neurology
 
       - name: Upload digest artifacts

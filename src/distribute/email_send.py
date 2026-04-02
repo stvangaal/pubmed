@@ -6,44 +6,38 @@ import os
 
 import resend
 
-from src.models import EmailConfig, EmailDigest, LLMUsage, PubmedRecord
+from src.models import (
+    BlogPage,
+    DistributeConfig,
+    EmailConfig,
+    EmailDigest,
+    LiteratureSummary,
+    LLMUsage,
+    PubmedRecord,
+)
 
 logger = logging.getLogger(__name__)
-
-
-def _resolve_recipients(
-    config: EmailConfig, domain: str | None = None
-) -> list[str]:
-    """Return the recipient list based on subscriber_source config.
-
-    Falls back to YAML to_addresses if Supabase returns nothing or
-    is not configured.
-    """
-    if config.subscriber_source == "supabase" and domain:
-        from src.distribute.subscriber_query import get_subscribers
-
-        supabase_recipients = get_subscribers(domain)
-        if supabase_recipients:
-            return supabase_recipients
-        logger.info(
-            "Supabase returned no subscribers for '%s', "
-            "falling back to YAML to_addresses",
-            domain,
-        )
-    return config.to_addresses
 
 
 def send_digest(
     digest: EmailDigest,
     config: EmailConfig,
-    domain: str | None = None,
+    summaries: list[LiteratureSummary] | None = None,
+    distribute_config: DistributeConfig | None = None,
+    blog_page: BlogPage | None = None,
 ) -> bool:
     """Send the digest email to configured recipients.
+
+    When subscriber_source is "kit", creates a Kit broadcast with Liquid
+    conditional blocks for per-subscriber topic filtering. Otherwise sends
+    via Resend to the static to_addresses list.
 
     Args:
         digest: Assembled EmailDigest with markdown and plain_text content.
         config: EmailConfig with sender, recipients, and subject template.
-        domain: Domain name, used when subscriber_source is "supabase".
+        summaries: Raw summaries (required for Kit path).
+        distribute_config: DistributeConfig (required for Kit path).
+        blog_page: Optional BlogPage for article URLs (Kit path).
 
     Returns:
         True if the email was sent successfully, False otherwise.
@@ -52,9 +46,31 @@ def send_digest(
         logger.info("Email sending disabled (enabled: false), skipping")
         return False
 
-    recipients = _resolve_recipients(config, domain)
-    if not recipients:
-        logger.warning("No recipients available, skipping email send")
+    # --- Kit path: create broadcast with Liquid conditionals ---
+    if config.subscriber_source == "kit":
+        if summaries is None or distribute_config is None:
+            logger.warning(
+                "Kit mode requires summaries and distribute_config; "
+                "falling back to Resend"
+            )
+        else:
+            from src.distribute.kit_send import (
+                build_kit_broadcast_html,
+                send_kit_broadcast,
+            )
+
+            html = build_kit_broadcast_html(
+                summaries, distribute_config, digest.date_range, blog_page
+            )
+            subject = config.subject.format(
+                date_range=digest.date_range,
+                article_count=digest.article_count,
+            )
+            return send_kit_broadcast(html, subject)
+
+    # --- Resend path (default) ---
+    if not config.to_addresses:
+        logger.warning("No recipients configured in email-config.yaml, skipping")
         return False
 
     api_key = os.environ.get("RESEND_API_KEY")
@@ -72,7 +88,7 @@ def send_digest(
     try:
         params: resend.Emails.SendParams = {
             "from": config.from_address,
-            "to": recipients,
+            "to": config.to_addresses,
             "subject": subject,
             "html": _markdown_to_html(digest.markdown),
             "text": digest.plain_text,
