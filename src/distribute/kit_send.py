@@ -1,9 +1,10 @@
 # owner: email-send
 """Create and send Kit (ConvertKit) broadcasts with per-subscriber topic filtering.
 
-Uses Liquid conditional blocks so each subscriber sees only the subdomain
-sections matching their tags. Subscribers with the "All Topics" tag receive
-the full unfiltered digest.
+Uses Liquid conditional blocks so each subscriber sees only the articles
+matching their tags. Articles scoring above the universal threshold are
+shown to all subscribers unconditionally. Section headings are wrapped
+in Liquid conditionals to avoid empty sections for non-matching subscribers.
 """
 
 import logging
@@ -34,6 +35,38 @@ logger = logging.getLogger(__name__)
 KIT_API_BASE = "https://api.kit.com/v4"
 
 
+def _liquid_tag_condition(tags: list[str]) -> str:
+    """Build a Liquid OR condition for a list of tags.
+
+    Example: 'subscriber.tags contains "Acute Treatment" or subscriber.tags contains "Prevention"'
+    """
+    clauses = [f'subscriber.tags contains "{t}"' for t in tags]
+    return " or ".join(clauses)
+
+
+def _collect_section_tags(
+    group: list[LiteratureSummary], universal_threshold: float
+) -> list[str]:
+    """Collect all unique tags from below-threshold articles in a section.
+
+    Used to build the Liquid conditional for section headings — the heading
+    should be visible if the subscriber matches any tag from any below-threshold
+    article in the section, OR if any article is above threshold (unconditional).
+    """
+    has_universal = any(s.triage_score >= universal_threshold for s in group)
+    if has_universal:
+        return []  # Empty means unconditional — section always visible
+
+    all_tags: list[str] = []
+    seen: set[str] = set()
+    for s in group:
+        for t in s.tags:
+            if t not in seen:
+                all_tags.append(t)
+                seen.add(t)
+    return all_tags
+
+
 def build_kit_broadcast_html(
     summaries: list[LiteratureSummary],
     config: DistributeConfig,
@@ -43,9 +76,10 @@ def build_kit_broadcast_html(
 ) -> str:
     """Build HTML email content with Liquid conditionals for Kit broadcast.
 
-    Each subdomain section is wrapped in a Liquid tag check so Kit renders
-    only the sections matching a subscriber's selected topics. Subscribers
-    tagged "All Topics" get the full digest.
+    Articles scoring >= universal_threshold appear for all subscribers.
+    Articles below the threshold are wrapped in per-article Liquid conditionals
+    using OR logic across the article's tags. Section headings are wrapped
+    to avoid empty sections for non-matching subscribers.
 
     Args:
         summaries: Article summaries from this pipeline run.
@@ -71,22 +105,9 @@ def build_kit_broadcast_html(
         sorted_summaries = _sort_summaries(summaries, config.sort_by)
         topic_groups = _group_by_subdomain(sorted_summaries)
 
-        # "All Topics" block — full digest, no filtering
-        all_topics_html = _render_topic_groups(
-            topic_groups, config, blog_page, wrap_liquid=False
-        )
-        parts.append('{% if subscriber.tags contains "All Topics" %}')
-        parts.append(all_topics_html)
-        parts.append("{% else %}")
-
-        # Per-topic conditional blocks
         parts.append(
-            _render_topic_groups(
-                topic_groups, config, blog_page, wrap_liquid=True
-            )
+            _render_topic_groups(topic_groups, config, blog_page)
         )
-
-        parts.append("{% endif %}")
 
     # Closing is shown to everyone
     if config.closing:
@@ -99,35 +120,64 @@ def _render_topic_groups(
     topic_groups: OrderedDict[str, list[LiteratureSummary]],
     config: DistributeConfig,
     blog_page: BlogPage | None,
-    wrap_liquid: bool,
 ) -> str:
-    """Render all topic groups as HTML, optionally wrapped in Liquid conditionals."""
+    """Render all topic groups as HTML with per-article Liquid conditionals.
+
+    Section headings are conditionally wrapped so subscribers without matching
+    tags don't see empty sections. Articles above the universal threshold
+    are rendered unconditionally.
+    """
     parts = []
     for topic_name, group in topic_groups.items():
         label = _subdomain_label(topic_name)
 
-        section_md_parts = [f"## {label}\n"]
-        for s in group:
-            is_full = (
-                s.triage_score >= config.full_summary_threshold
-                and not _is_narrative_review(s)
-            )
-            if is_full:
-                section_md_parts.append(_render_full_markdown(s))
-            else:
-                blog_url = (
-                    blog_page.article_urls.get(s.pmid) if blog_page else None
-                )
-                section_md_parts.append(_render_short_markdown(s, blog_url))
+        # Determine if this section heading needs a Liquid conditional
+        section_tags = _collect_section_tags(group, config.universal_threshold)
 
-        section_html = _markdown_to_html("\n\n".join(section_md_parts))
+        if section_tags:
+            parts.append(f"{{% if {_liquid_tag_condition(section_tags)} %}}")
 
-        if wrap_liquid:
-            parts.append(f'{{% if subscriber.tags contains "{label}" %}}')
-            parts.append(section_html)
+        parts.append(
+            _render_section_html(group, config, blog_page, label)
+        )
+
+        if section_tags:
             parts.append("{% endif %}")
+
+    return "\n".join(parts)
+
+
+def _render_section_html(
+    group: list[LiteratureSummary],
+    config: DistributeConfig,
+    blog_page: BlogPage | None,
+    label: str,
+) -> str:
+    """Render a single section with per-article Liquid wrapping."""
+    parts = [_markdown_to_html(f"## {label}\n")]
+
+    for s in group:
+        is_full = (
+            s.triage_score >= config.full_summary_threshold
+            and not _is_narrative_review(s)
+        )
+        if is_full:
+            article_md = _render_full_markdown(s)
         else:
-            parts.append(section_html)
+            blog_url = (
+                blog_page.article_urls.get(s.pmid) if blog_page else None
+            )
+            article_md = _render_short_markdown(s, blog_url)
+
+        article_html = _markdown_to_html(article_md)
+
+        if s.triage_score >= config.universal_threshold:
+            parts.append(article_html)
+        else:
+            condition = _liquid_tag_condition(s.tags)
+            parts.append(f"{{% if {condition} %}}")
+            parts.append(article_html)
+            parts.append("{% endif %}")
 
     return "\n".join(parts)
 

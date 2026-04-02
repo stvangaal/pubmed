@@ -18,7 +18,8 @@ class LiteratureSummary:
     title: str                   # Article title (from source PubmedRecord)
     journal: str                 # Journal title (from source PubmedRecord)
     pub_date: str                # Publication date (from source PubmedRecord, YYYY-MM-DD or YYYY-MM)
-    subdomain: str               # Clinical subdomain tag, e.g. "Acute Treatment"
+    tags: list[str]              # Clinical topic tags, e.g. ["Acute Treatment", "Prevention"]; first is primary
+    # subdomain: str (property) — returns tags[0] for backward compat
     citation: str                # Formatted markdown citation: "Title. *Journal*. [PMID](URL)"
     research_question: str       # One-sentence research question
     key_finding: str             # One-sentence key finding with clinical implication
@@ -37,7 +38,8 @@ class LiteratureSummary:
 ## Constraints
 
 - `pmid`, `title`, `journal`, `pub_date` must match the corresponding fields on the source `PubmedRecord`
-- `subdomain` must be one of the values from `SummaryConfig.subdomain_options`
+- Each entry in `tags` must be one of the values from `SummaryConfig.subdomain_options`; the first tag is the primary category
+- `subdomain` is a computed property returning `tags[0]` (or `"General"` if tags is empty)
 - `citation` must include a hyperlink to `https://pubmed.ncbi.nlm.nih.gov/{pmid}/`
 - `feedback_url` must include the PMID as a pre-filled form parameter
 - `research_question` and `key_finding` must each be a single sentence
@@ -55,3 +57,4 @@ class LiteratureSummary:
 | 2026-03-23 | v0 | Added title, journal, pub_date fields for plain-text rendering and sorting | llm-summarize, digest-build |
 | 2026-03-23 | v0 | Added summary_short field (2-sentence teaser) for tiered email digest rendering | llm-summarize, digest-build, blog-publish |
 | 2026-04-02 | v0 | Added `source_topic` and `preindex` fields carried from PubmedRecord | llm-summarize |
+| 2026-04-02 | v1 | Evolved `subdomain: str` to `tags: list[str]` with `subdomain` backward-compat property (#33) | llm-summarize, digest-build, email-send |

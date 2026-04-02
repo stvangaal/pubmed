@@ -34,6 +34,10 @@ sort_by: triage_score
 # Articles below get a 2-sentence teaser with a link to the blog page.
 full_summary_threshold: 0.80
 
+# Articles scoring >= this threshold appear for ALL subscribers regardless
+# of tag preferences. Below this, articles are filtered by subscriber tags.
+universal_threshold: 0.80
+
 output:
   # TODO: Set to output/domains/<domain>/digest.md
   file: output/domains/_template/digest.md
