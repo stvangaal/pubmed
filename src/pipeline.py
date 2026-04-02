@@ -47,10 +47,19 @@ def run():
         help="Domain config profile (e.g. stroke, neurology). "
              "Omit to use the legacy flat config/ layout.",
     )
+    parser.add_argument(
+        "--test",
+        action="store_true",
+        help="Single-day test mode: 1-day window, retmax=20, max 3 articles, "
+             "no email, no blog publish. Enables fast, cheap iteration.",
+    )
     args = parser.parse_args()
     domain = args.domain
+    test_mode = args.test
 
     logger.info("Starting PubMed Monitor pipeline (domain: %s)", domain or "legacy")
+    if test_mode:
+        logger.info("TEST MODE: single-day window, reduced limits, no email/publish")
 
     # --- Schema version check ---
     if domain:
@@ -63,6 +72,14 @@ def run():
     blog_config = load_blog_config(domain=domain)
     distribute_config = load_distribute_config(domain=domain)
     email_config = load_email_config(domain=domain)
+
+    # --- Test mode overrides ---
+    if test_mode:
+        search_config.date_window_days = 1
+        search_config.retmax = 20
+        filter_config.llm_triage.max_articles = 3
+        blog_config.publish = False
+        email_config.enabled = False
 
     run_date = datetime.now()
     date_range = _make_date_range(run_date, search_config.date_window_days)
