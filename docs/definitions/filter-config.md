@@ -86,7 +86,8 @@ llm_triage:
   # Path to per-domain dedup history (tracks previously seen PMIDs)
   seen_pmids_file: data/seen-pmids.json
 
-# Journals considered high-tier for scoring boost (lowercase)
+# Journals used as the preindex search scope — articles in these journals
+# are searched by Title/Abstract before MeSH indexing (lowercase, full title)
 priority_journals:
   - the new england journal of medicine
   - the lancet
@@ -146,6 +147,7 @@ When `--domain` is specified, this config is loaded from `config/domains/{domain
 - `require_language` uses ISO 639-2 three-letter codes (e.g., "eng", "fre", "chi")
 - `include_article_types` and `exclude_article_types` use PubMed's publication type controlled vocabulary (lowercase)
 - When an article has both an included and excluded type, the include takes precedence
+- `priority_journals` entries must be non-empty strings matching PubMed's `[Journal]` field (accepts full title, abbreviation, or ISSN). When non-empty, the pipeline runs preindex Title/Abstract searches limited to these journals alongside the MeSH search. Preindex articles pass through rule and LLM triage identically to MeSH-indexed articles; the `preindex` flag is preserved for downstream labeling.
 
 ## Changelog
 
@@ -154,3 +156,4 @@ When `--domain` is specified, this config is loaded from `config/domains/{domain
 | 2026-03-23 | v0 | Initial draft from filter spike | — |
 | 2026-03-24 | v0 | Added `seen_pmids_file` to `LLMTriageConfig` for per-domain dedup | llm-triage |
 | 2026-04-01 | v0 | Added `min_articles` and `min_score_floor` to `LLMTriageConfig` for minimum article guarantee | llm-triage |
+| 2026-04-02 | v0 | Clarify `priority_journals` as preindex search scope (passed to search stage by pipeline) | pubmed-query |

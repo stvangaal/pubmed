@@ -26,22 +26,34 @@ BASE_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 # Query construction
 # ---------------------------------------------------------------------------
 
-def build_query(config: SearchConfig, run_date: datetime | None = None) -> str:
-    """Build a PubMed query string from a SearchConfig.
-
-    Combines MeSH terms with OR, adds any additional free-text terms,
-    and appends a date range filter using [Date - Entry].
+def _date_range(
+    config: SearchConfig, run_date: datetime | None = None,
+) -> tuple[str, str]:
+    """Compute the (mindate, maxdate) strings for a search window.
 
     The end date is run_date minus 1 day (exclusive) to prevent overlap
     between consecutive runs. The start date is run_date minus
-    date_window_days.
+    date_window_days.  PubMed date ranges are inclusive on both ends.
 
-    Example output:
-        "stroke"[MeSH Major Topic] AND 2026/03/16:2026/03/22[Date - Entry]
+    Returns dates formatted as YYYY/MM/DD for the esearch API.
     """
     if run_date is None:
         run_date = datetime.now()
+    start = run_date - timedelta(days=config.date_window_days)
+    end = run_date - timedelta(days=1)
+    return start.strftime("%Y/%m/%d"), end.strftime("%Y/%m/%d")
 
+
+def build_query(config: SearchConfig) -> str:
+    """Build the term part of a PubMed MeSH query from a SearchConfig.
+
+    Combines MeSH terms with OR and adds any additional free-text terms.
+    Date filtering is handled separately via esearch API parameters
+    (datetype, mindate, maxdate) — not embedded in the query string.
+
+    Example output:
+        "stroke"[MeSH Major Topic]
+    """
     # MeSH terms — OR-joined, each wrapped in quotes with [MeSH Major Topic].
     mesh_clauses = [f'"{term}"[MeSH Major Topic]' for term in config.mesh_terms]
     mesh_part = " OR ".join(mesh_clauses)
@@ -57,18 +69,41 @@ def build_query(config: SearchConfig, run_date: datetime | None = None) -> str:
             additional = f"({additional})"
         parts.append(additional)
 
-    # Date range: start = run_date - window, end = run_date - 1 day.
-    # PubMed ranges are inclusive on both ends, so subtracting 1 from the
-    # end date prevents the same article appearing in two consecutive runs.
-    start_date = run_date - timedelta(days=config.date_window_days)
-    end_date = run_date - timedelta(days=1)
-    date_range = (
-        f"{start_date.strftime('%Y/%m/%d')}:{end_date.strftime('%Y/%m/%d')}"
-        f"[Date - Entry]"
-    )
-    parts.append(date_range)
-
     return " AND ".join(parts)
+
+
+def build_preindex_query(
+    config: SearchConfig,
+    journals: list[str],
+) -> str:
+    """Build a Title/Abstract query limited to specific journals.
+
+    Used to catch recently published articles before MeSH indexing.
+    Searches the same terms as build_query() but uses [Title/Abstract]
+    instead of [MeSH Major Topic], restricted to the given journal list.
+    Date filtering is handled separately via esearch API parameters.
+
+    Example output:
+        ("atrial fibrillation"[Title/Abstract]) AND
+        ("N Engl J Med"[Journal] OR "Lancet"[Journal])
+    """
+    # Text terms — OR-joined, each wrapped with [Title/Abstract].
+    text_clauses = [f'"{term}"[Title/Abstract]' for term in config.mesh_terms]
+    if config.additional_terms:
+        text_clauses.extend(
+            f'"{term}"[Title/Abstract]' for term in config.additional_terms
+        )
+    text_part = " OR ".join(text_clauses)
+    if len(text_clauses) > 1:
+        text_part = f"({text_part})"
+
+    # Journal filter — OR-joined.
+    journal_clauses = [f'"{j}"[Journal]' for j in journals]
+    journal_part = " OR ".join(journal_clauses)
+    if len(journal_clauses) > 1:
+        journal_part = f"({journal_part})"
+
+    return f"{text_part} AND {journal_part}"
 
 
 # ---------------------------------------------------------------------------
@@ -80,8 +115,15 @@ def esearch(
     retmax: int = 200,
     rate_limit_delay: float = 0.4,
     api_key: str | None = None,
+    datetype: str | None = None,
+    mindate: str | None = None,
+    maxdate: str | None = None,
 ) -> tuple[list[str], int]:
     """Call PubMed's esearch endpoint to get PMIDs matching a query.
+
+    Date filtering uses esearch API parameters (not inline query syntax):
+    - datetype: "mhda" (MeSH date), "edat" (entry date), or "pdat" (pub date)
+    - mindate/maxdate: YYYY/MM/DD format
 
     Returns a tuple of (pmid_list, total_count). The total_count may be
     larger than len(pmid_list) when results exceed retmax.
@@ -96,6 +138,12 @@ def esearch(
     }
     if api_key:
         params["api_key"] = api_key
+    if datetype:
+        params["datetype"] = datetype
+    if mindate:
+        params["mindate"] = mindate
+    if maxdate:
+        params["maxdate"] = maxdate
 
     url = f"{BASE_URL}/esearch.fcgi?{urllib.parse.urlencode(params)}"
     logger.info("esearch request: %s", url)
@@ -230,37 +278,43 @@ def parse_record(article_elem: ET.Element) -> PubmedRecord | None:
 # Main search orchestrator
 # ---------------------------------------------------------------------------
 
-def search(
-    config: SearchConfig,
-    run_date: datetime | None = None,
+def _execute_query(
+    query: str,
+    retmax: int = 200,
+    rate_limit_delay: float = 0.4,
+    api_key: str | None = None,
+    require_abstract: bool = True,
+    datetype: str | None = None,
+    mindate: str | None = None,
+    maxdate: str | None = None,
 ) -> tuple[list[PubmedRecord], int]:
-    """Run the full PubMed search pipeline.
+    """Execute a pre-built PubMed query through esearch, efetch, and parse.
 
-    1. Build query from config.
-    2. Call esearch to get PMIDs.
-    3. Call efetch (in batches of 200) to get full XML.
-    4. Parse each article into a PubmedRecord.
-    5. Exclude articles without abstracts if require_abstract is True.
+    Shared by both MeSH-based search() and preindex searches in
+    multi_search().  Callers build the query string; this function
+    handles the API round-trips and XML parsing.
 
-    Returns (records, total_count) where total_count is the number
-    reported by esearch (useful for logging/metrics).
+    Date filtering is applied via esearch API parameters (datetype,
+    mindate, maxdate) rather than inline query syntax.
+
+    Returns (records, total_count).
     """
-    query = build_query(config, run_date)
-    logger.info("Constructed query: %s", query)
+    logger.info("Executing query: %s (datetype=%s)", query, datetype)
 
-    # Step 1: esearch — get PMIDs.
     pmids, total_count = esearch(
         query,
-        retmax=config.retmax,
-        rate_limit_delay=config.rate_limit_delay,
-        api_key=config.api_key,
+        retmax=retmax,
+        rate_limit_delay=rate_limit_delay,
+        api_key=api_key,
+        datetype=datetype,
+        mindate=mindate,
+        maxdate=maxdate,
     )
 
     if not pmids:
         logger.info("No results returned by esearch")
         return [], total_count
 
-    # Step 2: efetch — fetch in batches of 200.
     batch_size = 200
     records: list[PubmedRecord] = []
 
@@ -268,11 +322,10 @@ def search(
         batch = pmids[i : i + batch_size]
         xml_data = efetch(
             batch,
-            rate_limit_delay=config.rate_limit_delay,
-            api_key=config.api_key,
+            rate_limit_delay=rate_limit_delay,
+            api_key=api_key,
         )
 
-        # Parse XML into individual article elements.
         root = ET.fromstring(xml_data)
         articles = root.findall(".//PubmedArticle")
         logger.info(
@@ -285,8 +338,7 @@ def search(
             if record is None:
                 continue
 
-            # Exclude articles without abstracts when configured.
-            if config.require_abstract and not record.abstract:
+            if require_abstract and not record.abstract:
                 logger.info(
                     "Excluding PMID %s: missing abstract", record.pmid
                 )
@@ -295,16 +347,49 @@ def search(
             records.append(record)
 
     logger.info(
-        "Search complete: %d records returned (esearch total: %d)",
+        "Query complete: %d records returned (esearch total: %d)",
         len(records),
         total_count,
     )
     return records, total_count
 
 
+def search(
+    config: SearchConfig,
+    run_date: datetime | None = None,
+) -> tuple[list[PubmedRecord], int]:
+    """Run the full PubMed search pipeline.
+
+    1. Build query from config (terms only, no date in query string).
+    2. Call esearch with datetype=mhda to filter by MeSH indexing date.
+    3. Call efetch (in batches of 200) to get full XML.
+    4. Parse each article into a PubmedRecord.
+    5. Exclude articles without abstracts if require_abstract is True.
+
+    Uses datetype="mhda" (MeSH date) so articles are found when they
+    become MeSH-searchable, not when they first entered PubMed.
+
+    Returns (records, total_count) where total_count is the number
+    reported by esearch (useful for logging/metrics).
+    """
+    query = build_query(config)
+    mindate, maxdate = _date_range(config, run_date)
+    return _execute_query(
+        query,
+        retmax=config.retmax,
+        rate_limit_delay=config.rate_limit_delay,
+        api_key=config.api_key,
+        require_abstract=config.require_abstract,
+        datetype="mhda",
+        mindate=mindate,
+        maxdate=maxdate,
+    )
+
+
 def multi_search(
     config: SearchConfig,
     run_date: datetime | None = None,
+    preindex_journals: list[str] | None = None,
 ) -> tuple[list[PubmedRecord], int]:
     """Run primary search plus any configured topics, deduplicate.
 
@@ -317,6 +402,12 @@ def multi_search(
 
     When config.mesh_terms is non-empty, a primary search runs first
     (tagged source_topic="primary") for backward compatibility.
+
+    When preindex_journals is provided, a parallel Title/Abstract search
+    runs for each topic (and primary) limited to the given journals.
+    These catch articles before MeSH indexing.  MeSH searches run first
+    so indexed hits take priority during dedup.  Preindex-only hits are
+    tagged with preindex=True.
     """
     all_records: list[PubmedRecord] = []
     seen_pmids: set[str] = set()
@@ -357,9 +448,66 @@ def multi_search(
             topic.name, len(records), new_count,
         )
 
+    # --- Preindex searches (Title/Abstract, journal-limited) ---
+    if preindex_journals:
+        preindex_count = 0
+
+        # Collect all (source_topic, SearchConfig) pairs to run.
+        preindex_targets: list[tuple[str, SearchConfig]] = []
+        if config.mesh_terms:
+            preindex_targets.append(("primary", config))
+        for topic in config.topics:
+            preindex_targets.append((
+                topic.name,
+                SearchConfig(
+                    mesh_terms=topic.mesh_terms,
+                    additional_terms=topic.additional_terms,
+                    date_window_days=config.date_window_days,
+                    retmax=config.retmax,
+                    require_abstract=config.require_abstract,
+                    rate_limit_delay=config.rate_limit_delay,
+                    api_key=config.api_key,
+                ),
+            ))
+
+        for topic_name, topic_cfg in preindex_targets:
+            query = build_preindex_query(topic_cfg, preindex_journals)
+            mindate, maxdate = _date_range(topic_cfg, run_date)
+            logger.info("Running preindex search: %s", topic_name)
+            records, count = _execute_query(
+                query,
+                retmax=topic_cfg.retmax,
+                rate_limit_delay=topic_cfg.rate_limit_delay,
+                api_key=topic_cfg.api_key,
+                require_abstract=topic_cfg.require_abstract,
+                datetype="edat",
+                mindate=mindate,
+                maxdate=maxdate,
+            )
+            total += count
+            new_count = 0
+            for r in records:
+                if r.pmid not in seen_pmids:
+                    r.source_topic = topic_name
+                    r.preindex = True
+                    seen_pmids.add(r.pmid)
+                    all_records.append(r)
+                    new_count += 1
+            preindex_count += new_count
+            logger.info(
+                "Preindex '%s': %d results, %d new (after dedup)",
+                topic_name, len(records), new_count,
+            )
+
+        logger.info(
+            "Preindex searches complete: %d new records from %d queries",
+            preindex_count, len(preindex_targets),
+        )
+
     logger.info(
-        "Multi-search complete: %d total records (from %d topics%s)",
+        "Multi-search complete: %d total records (from %d topics%s%s)",
         len(all_records), len(config.topics),
         " + primary" if config.mesh_terms else "",
+        " + preindex" if preindex_journals else "",
     )
     return all_records, total

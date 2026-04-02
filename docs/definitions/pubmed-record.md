@@ -25,6 +25,8 @@ class PubmedRecord:
     language: str                # Language code, e.g. "eng"
     doi: str | None              # DOI if available
     status: str                  # Pipeline status: "retrieved" | "filtered"
+    source_topic: str            # Topic name from multi_search (e.g. "atrial-fibrillation"); "" for primary search
+    preindex: bool               # True if found via Title/Abstract text search before MeSH indexing
     triage_score: float | None   # LLM triage relevance score (set by filter stage, None while @retrieved)
     triage_rationale: str | None # LLM triage explanation (set by filter stage, None while @retrieved)
 ```
@@ -38,6 +40,8 @@ class PubmedRecord:
 - `authors` uses "LastName FirstInitial" format, truncated to first 3 + "et al." for display
 - `pub_date` is normalized by the search stage from PubMed's variable formats (e.g. "2026-Mar", "2026-02-12", "2026 Mar-Apr") to `YYYY-MM-DD` when day is available, `YYYY-MM` otherwise. Month names are converted to numbers.
 - `article_types` uses PubMed's controlled vocabulary for publication types
+- `source_topic` is set by `multi_search()`: `""` for the primary search, or the topic name (e.g. `"atrial-fibrillation"`) for topic searches. Used downstream for triage prompt selection and digest grouping.
+- `preindex` is `False` by default. Set to `True` by `multi_search()` when the article was found via a Title/Abstract text search (limited to priority journals) before NLM assigned MeSH terms. Preindex articles have empty `mesh_terms` and may lack specific `article_types`. The flag is preserved through all pipeline stages for downstream labeling.
 
 ## Changelog
 
@@ -45,3 +49,4 @@ class PubmedRecord:
 |------|---------|--------|----------------|
 | 2026-03-23 | v0 | Initial draft from architecture spike | — |
 | 2026-03-23 | v0 | Added date normalization constraint from search spike | pubmed-query |
+| 2026-04-02 | v0 | Added `source_topic` and `preindex` fields for multi-topic and pre-MeSH article tracking | pubmed-query |

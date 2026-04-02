@@ -61,6 +61,15 @@ An `EmailDigest` object and an `EmailConfig`.
 
 4. **Send via Resend API.** POST with `from`, `to`, `subject`, `html`, and `text` (plain-text fallback). Return true on success, false on failure.
 
+### Troubleshooting Report
+
+A separate email sent only to `config.owner_email` containing articles that were rejected by LLM triage. Built by `build_rejection_report()`:
+
+1. Split rejected articles into **near-misses** (scored >= threshold but cut by article cap) and **below-threshold** (scored < threshold).
+2. Within each section, sort by `preindex` status: MeSH-indexed articles first, preindex articles last.
+3. Label preindex articles with `*(preindex)*` in markdown / `(preindex)` in plain text.
+4. Include LLM cost summary if available.
+
 ### Error Handling
 - If the API call fails, log a warning and return false — do not halt the pipeline. The digest files are already written; email is best-effort.
 
@@ -85,6 +94,7 @@ An `EmailDigest` object and an `EmailConfig`.
 - **test_skip_when_disabled**: When `enabled: false`, verify no API call is made.
 - **test_skip_when_no_key**: When `RESEND_API_KEY` is unset, verify no API call is made.
 - **test_skip_when_no_recipients**: When `to_addresses` is empty, verify no API call is made.
+- **test_preindex_articles_sorted_last_and_labeled**: Verify preindex articles appear after indexed articles and carry `(preindex)` label in troubleshooting report.
 
 ### Contract Tests
 

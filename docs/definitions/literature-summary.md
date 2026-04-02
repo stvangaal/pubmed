@@ -30,6 +30,8 @@ class LiteratureSummary:
     triage_rationale: str        # LLM triage explanation from filter stage
     feedback_url: str            # Google Form URL with pre-filled PMID
     raw_llm_response: str        # Full LLM output (for debugging/auditing)
+    source_topic: str            # Topic name from source PubmedRecord (e.g. "atrial-fibrillation"); "" for primary
+    preindex: bool               # True if source article was found before MeSH indexing (carried from PubmedRecord)
 ```
 
 ## Constraints
@@ -42,6 +44,7 @@ class LiteratureSummary:
 - `summary_short` must be exactly 2 sentences: a standalone LLM-authored teaser that frames the clinical question and states the key finding with enough context for a reader to decide whether to read the full summary
 - `triage_score` and `triage_rationale` are carried forward from the `PubmedRecord@filtered` source — they reflect why the filter stage selected this article
 - `raw_llm_response` preserves the unprocessed LLM output for quality auditing
+- `source_topic` and `preindex` are carried forward from the source `PubmedRecord@filtered` unchanged
 
 ## Changelog
 
@@ -51,3 +54,4 @@ class LiteratureSummary:
 | 2026-03-23 | v0 | Added triage_score and triage_rationale fields from filter spike | llm-summarize |
 | 2026-03-23 | v0 | Added title, journal, pub_date fields for plain-text rendering and sorting | llm-summarize, digest-build |
 | 2026-03-23 | v0 | Added summary_short field (2-sentence teaser) for tiered email digest rendering | llm-summarize, digest-build, blog-publish |
+| 2026-04-02 | v0 | Added `source_topic` and `preindex` fields carried from PubmedRecord | llm-summarize |

@@ -70,7 +70,11 @@ def run():
 
     # --- Stage 1: Search ---
     logger.info("Stage 1: Search")
-    records, total = multi_search(search_config, run_date=run_date)
+    records, total = multi_search(
+        search_config,
+        run_date=run_date,
+        preindex_journals=filter_config.priority_journals,
+    )
     logger.info(f"  Retrieved {len(records)} records ({total} total in PubMed)")
 
     if not records:

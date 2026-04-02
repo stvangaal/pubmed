@@ -12,6 +12,9 @@ owns:
 requires:
   - name: search-config
     version: v0
+  - name: filter-config
+    version: v0
+    note: priority_journals list passed through pipeline for preindex search
 provides:
   - name: pubmed-record
     version: v0
@@ -42,20 +45,99 @@ Query PubMed's E-utilities API for recent stroke-related publications and parse 
 
 ## Behaviour
 
-### Query Construction
+### Query Construction (MeSH Search)
 
-Build a PubMed query string from `SearchConfig`:
+Build the term part of a PubMed query string from `SearchConfig`:
 
 1. Combine `mesh_terms` as OR-joined `"term"[MeSH Major Topic]` clauses.
 2. AND with any `additional_terms` (free-text, OR-joined).
-3. AND with a date range filter: `{run_date - date_window_days}:{run_date - 1 day}[Date - Entry]`.
-   - Use `[Date - Entry]` (when PubMed indexed it), not `[Date - Publication]` — this catches articles published earlier but newly indexed.
-   - PubMed date ranges are **inclusive on both ends**. To prevent overlap between consecutive weekly runs, the end date must be offset by one day (e.g., for a run on March 23, the range is `2026/03/16:2026/03/22`). The next run starts on `2026/03/23`.
 
-Example constructed query:
+Date filtering is applied via the esearch API's `datetype`, `mindate`, `maxdate` parameters (not embedded in the query string):
+- `datetype=mhda` — filter by MeSH indexing date (when NLM assigned MeSH terms). This ensures articles are found when they become MeSH-searchable, preventing permanent misses when indexing takes longer than `date_window_days`.
+- `mindate` = run_date - date_window_days, `maxdate` = run_date - 1 day. PubMed date ranges are **inclusive on both ends**. The offset-by-one prevents the same article appearing in consecutive runs.
+
+Example constructed query (term part only):
 ```
-"stroke"[MeSH Major Topic] AND 2026/03/16:2026/03/22[Date - Entry]
+"stroke"[MeSH Major Topic]
 ```
+With esearch params: `datetype=mhda&mindate=2026/03/16&maxdate=2026/03/22`
+
+### Query Construction (Preindex Search)
+
+For each topic, build a parallel Title/Abstract query limited to priority journals. This catches articles published in top-tier journals before NLM assigns MeSH terms:
+
+1. Convert each `mesh_term` to `"term"[Title/Abstract]` (OR-joined). Include `additional_terms` if present.
+2. AND with a journal filter: OR-joined `"journal"[Journal]` clauses from `priority_journals`.
+
+Date filtering via esearch params: `datetype=edat` (entry date — when the article entered PubMed). This is correct for preindex because we want articles from the moment they appear, before MeSH indexing.
+
+Example constructed query (term part only):
+```
+("atrial fibrillation"[Title/Abstract]) AND
+  ("the new england journal of medicine"[Journal] OR "the lancet"[Journal])
+```
+With esearch params: `datetype=edat&mindate=2026/03/23&maxdate=2026/03/29`
+
+### Search Flow Diagram
+
+```
+                          multi_search()
+  ┌─────────────────────────────────────────────────────────────┐
+  │                                                             │
+  │   MeSH Searches (run first)                                 │
+  │   ─────────────────────────                                 │
+  │                                                             │
+  │     "stroke"[MeSH Major Topic]                              │
+  │       + esearch datetype=mhda                               │
+  │         │                                                   │
+  │         ├── primary search ──────────────────┐              │
+  │         │                                    │              │
+  │     "atrial fibrillation"[MeSH Major Topic]  │              │
+  │       + esearch datetype=mhda                │              │
+  │         │                                    │              │
+  │         ├── topic: af ───────────────────┐   │              │
+  │         ⋮  (one per topic)               │   │              │
+  │                                          ▼   ▼              │
+  │                                     ┌──────────┐           │
+  │                                     │  Dedup   │           │
+  │   Preindex Searches (run second)    │  by PMID │           │
+  │   ──────────────────────────────    │  (first  │           │
+  │                                     │   seen   │           │
+  │     "stroke"[Title/Abstract]        │   wins)  │           │
+  │       AND journals[Journal]         └────┬─────┘           │
+  │       + esearch datetype=edat            │                  │
+  │         │                                │                  │
+  │         ├── primary (preindex) ──────────┤                  │
+  │         │                                │                  │
+  │     "atrial fibrillation"[Title/Abs.]    │                  │
+  │       AND journals[Journal]              │                  │
+  │       + esearch datetype=edat            │                  │
+  │         │                                │                  │
+  │         ├── topic: af (preindex) ────────┤                  │
+  │         ⋮                                │                  │
+  │                                          ▼                  │
+  │                                   PubmedRecord[]            │
+  │                                   (preindex=False           │
+  │                                    for MeSH hits,           │
+  │                                    preindex=True            │
+  │                                    for preindex-only)       │
+  │                                          │                  │
+  └──────────────────────────────────────────┼──────────────────┘
+                                             │
+                                             ▼
+                                     ┌──────────────┐
+                                     │ rule_filter() │
+                                     │ llm_triage()  │──▶ seen_pmids.json
+                                     └──────┬───────┘    (persistent,
+                                            │             cross-run dedup)
+                                            ▼
+                                     PubmedRecord@filtered
+```
+
+**Date field summary** (applied via esearch API params, not inline query syntax):
+- MeSH search: `datetype=mhda` — finds articles when MeSH terms are assigned
+- Preindex search: `datetype=edat` — finds articles when they first enter PubMed
+- Suppression: `seen_pmids.json` prevents an article from being triaged twice across runs (preindex week 1 → MeSH week 2)
 
 ### API Calls
 
@@ -120,19 +202,31 @@ When `search_profiles` are configured, `multi_search()` runs the primary search 
 
 When `search_profiles` is empty (the default), `multi_search()` behaves identically to `search()`.
 
+### Preindex Searches (within multi_search)
+
+When `preindex_journals` is provided (from `FilterConfig.priority_journals` via the pipeline), `multi_search()` runs additional Title/Abstract queries after all MeSH searches complete:
+
+1. For each topic (and primary), build a preindex query via `build_preindex_query()`.
+2. Execute via the shared `_execute_query()` helper (same esearch → efetch → parse flow).
+3. Deduplicate against the same PMID set — MeSH hits ran first, so they win.
+4. Tag preindex-only hits with `preindex=True` and the appropriate `source_topic`.
+
+When `preindex_journals` is `None` or empty, no preindex searches run.
+
 ### Output
 
-Return a list of `PubmedRecord` objects with status `"retrieved"` and the total count from esearch (for logging/metrics).
+Return a list of `PubmedRecord` objects with status `"retrieved"` and the total count from esearch (for logging/metrics). Each record is tagged with `source_topic` (topic name or `"primary"`) and `preindex` (`True` for articles found only via text search, `False` for MeSH-indexed hits).
 
 ## Decisions
 
 | ID | Decision | Alternatives Considered | Rationale | Date |
 |----|----------|------------------------|-----------|------|
-| PQ1 | Use `[Date - Entry]` not `[Date - Publication]` | `[Date - Publication]`, `[Date - Create]` | Entry date captures when PubMed indexed the article, which is what matters for a "new this week" pipeline. Publication date may be weeks or months earlier. | 2026-03-23 |
+| PQ1 | MeSH search uses `datetype=mhda`; preindex search uses `datetype=edat` (via esearch API params) | Inline `[Date - Entry]` in query string (original); `[Date - Publication]`; single date field for both | MeSH search needs MHDA (when MeSH terms were assigned) to avoid permanently missing articles that take >7 days to index. Preindex search needs EDAT (entry date) to catch articles the moment they appear. Date filtering via esearch API params (`datetype`/`mindate`/`maxdate`) rather than inline query syntax — PubMed does not support `[Date - MeSH Date]` as an inline field tag. | 2026-04-02 |
 | PQ2 | Use E-utilities directly, not a wrapper library | BioPython Entrez, PyMed | Direct API access avoids dependencies, is well-documented, and gives full control. The API surface we need is small (esearch + efetch). | 2026-03-23 |
 | PQ3 | Broad MeSH query, let filter stage narrow | Narrow query with article type filters | The spike showed filtered_types returned only 4/week — too few for robust filtering. Broad query (~42/week) gives the filter stage enough candidates to work with. | 2026-03-23 |
 | PQ4 | Rate limit with configurable delay, not hardcoded | Hardcoded 0.4s; no delay | Configurable respects both API-key and no-key scenarios. Default 0.4s is safe for keyless access (< 3 req/sec). | 2026-03-23 |
 | PQ5 | Multiple independent queries for topic expansion, dedup by PMID | Single OR-joined query (reverted); widen primary mesh_terms; PubMed elink API | Independent queries avoid NOT-clause syntax issues that caused the previous revert. Each profile is isolated — failures or volume spikes are contained. Dedup is trivial (PMID set). Filter stage unchanged per PQ3. | 2026-04-01 |
+| PQ6 | Parallel preindex Title/Abstract search limited to priority journals | Wider MeSH query; separate pipeline stage; OR text terms into MeSH query | Top-tier journals appear in PubMed before MeSH indexing (days to weeks). A parallel text search catches these early without polluting the precise MeSH query. Journal limitation keeps noise manageable. MeSH dedup ensures one record per article. `preindex` flag enables downstream labeling. | 2026-04-02 |
 
 ## Tests
 
@@ -152,6 +246,15 @@ Return a list of `PubmedRecord` objects with status `"retrieved"` and the total 
 - **test_multi_search_merges_results**: Verify results from primary + profiles are merged.
 - **test_multi_search_deduplicates_by_pmid**: Verify duplicate PMIDs across queries are kept once (first-seen wins).
 - **test_multi_search_profile_inherits_config**: Verify profile queries inherit parent config fields.
+
+- **test_build_preindex_query_uses_title_abstract**: Verify `build_preindex_query()` uses `[Title/Abstract]`, not `[MeSH Major Topic]`.
+- **test_build_preindex_query_includes_journal_filter**: Verify journal names appear as `[Journal]` clauses.
+- **test_build_preindex_query_uses_date_entry**: Verify preindex query uses `[Date - Entry]`.
+- **test_preindex_records_tagged**: Verify preindex-only hits have `preindex=True` and correct `source_topic`.
+- **test_mesh_hit_wins_dedup_over_preindex**: Verify same PMID from MeSH and preindex keeps `preindex=False`.
+- **test_preindex_runs_for_topics**: Verify preindex searches run for each topic, not just primary.
+- **test_no_preindex_when_journals_empty**: Verify no preindex searches when `preindex_journals` is `None`.
+- **test_preindex_dedup_across_topics**: Verify preindex hit already found by topic MeSH is deduplicated.
 
 ### Contract Tests
 
@@ -176,3 +279,5 @@ Return a list of `PubmedRecord` objects with status `"retrieved"` and the total 
 - Use `urllib.request` and `xml.etree.ElementTree` from the standard library — no external HTTP or XML dependencies needed.
 - The spike code in `spikes/search/spike_search.py` has a working parser that covers all field extraction and date normalization. Extract and refine it.
 - For the default `config/search-config.yaml`, use the broad query that returned ~42 results/week in the spike: `mesh_terms: ["stroke"]`, `date_window_days: 7`, `retmax: 200`.
+- `_execute_query()` is a shared helper that handles the esearch → efetch → parse pipeline for a pre-built query string. Both `search()` (MeSH) and the preindex loop in `multi_search()` use it, avoiding code duplication.
+- `build_preindex_query()` mirrors `build_query()` but substitutes `[Title/Abstract]` for `[MeSH Major Topic]`, adds a journal filter clause, and uses `[Date - Entry]` instead of `[Date - MeSH Date]`.

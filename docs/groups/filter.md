@@ -11,9 +11,9 @@ Aggressively reduce the candidate set to only practice-changing stroke publicati
 
 ## Boundaries
 
-**Input:** `pubmed-record@retrieved` (~200 records)
+**Input:** `pubmed-record@retrieved` (~40-130 records, mix of MeSH-indexed and preindex articles)
 
-**Output:** `pubmed-record@filtered` (~5 records, scored and annotated with triage rationale)
+**Output:** `pubmed-record@filtered` (~5 records, scored and annotated with triage rationale; `preindex` and `source_topic` preserved)
 
 ## Member Specs
 

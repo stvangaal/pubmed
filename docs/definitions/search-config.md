@@ -30,6 +30,19 @@ class SearchConfig:
     search_profiles: list[SearchProfile]  # Additional independent queries (optional, default [])
 ```
 
+## Preindex Search
+
+When `priority_journals` is configured in `filter-config.yaml`, the pipeline passes the journal list to `multi_search()` as the `preindex_journals` parameter. For each topic (and primary search), an additional Title/Abstract query runs in parallel, limited to the specified journals:
+
+```
+("term"[Title/Abstract]) AND ("journal1"[Journal] OR "journal2"[Journal] OR ...)
+```
+With esearch API params: `datetype=edat&mindate=YYYY/MM/DD&maxdate=YYYY/MM/DD`
+
+This catches articles published in top-tier journals before NLM assigns MeSH terms. Date filtering is applied via esearch API parameters (`datetype`/`mindate`/`maxdate`), not inline query syntax. The preindex search uses `datetype=edat` (PubMed entry date) while the MeSH search uses `datetype=mhda` (MeSH indexing date). MeSH hits take dedup priority; preindex-only hits are tagged with `preindex=True` on the `PubmedRecord`.
+
+The journal list is not part of `SearchConfig` — it is passed through from `FilterConfig.priority_journals` by the pipeline orchestrator.
+
 ## Domain Scoping
 
 When `--domain` is specified, this config is loaded from `config/domains/{domain}/search-config.yaml` instead of `config/search-config.yaml`. The schema is identical in both layouts. See architecture decision A10.
@@ -50,3 +63,4 @@ When `--domain` is specified, this config is loaded from `config/domains/{domain
 |------|---------|--------|----------------|
 | 2026-03-23 | v0 | Initial draft from search spike | — |
 | 2026-04-01 | v0 | Add optional search_profiles for topic expansion | pubmed-query |
+| 2026-04-02 | v0 | Document preindex search behavior (journal list sourced from filter-config) | pubmed-query |

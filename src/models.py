@@ -67,6 +67,7 @@ class PubmedRecord:
     doi: str | None
     status: str  # "retrieved" | "filtered"
     source_topic: str = ""
+    preindex: bool = False
     triage_score: float | None = None
     triage_rationale: str | None = None
 
@@ -95,6 +96,7 @@ class LiteratureSummary:
     feedback_url: str
     raw_llm_response: str
     source_topic: str = ""
+    preindex: bool = False
 
 
 @dataclass

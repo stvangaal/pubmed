@@ -82,7 +82,7 @@ A weekly automated pipeline that identifies practice-changing clinical publicati
 
 | Stage | Purpose | Input | Output | Volume |
 |-------|---------|-------|--------|--------|
-| **Search** | Query PubMed API for recent literature in the configured domain's search terms | Schedule trigger (cron) | PubmedRecord@retrieved | ~40-110/run |
+| **Search** | Query PubMed API for recent literature using MeSH terms (indexed articles) and Title/Abstract text (preindex articles in priority journals) | Schedule trigger (cron) | PubmedRecord@retrieved | ~40-130/run |
 | **Filter** | Two-pass aggressive filtering: rule-based cut (study type, language, MeSH) then LLM triage for clinical relevance | PubmedRecord@retrieved | PubmedRecord@filtered | ~40-110 → ~30-80 → ~4-10 |
 | **Summarize** | Generate domain-specific clinical summaries using an LLM with a specialized prompt | PubmedRecord@filtered | LiteratureSummary@summarized | ~4-10/run |
 | **Distribute** | Publish digest to blog (gh-pages) then assemble email digest with blog links | LiteratureSummary@summarized | BlogPage@published, EmailDigest@assembled | 1 blog page + 1 email digest/run |
@@ -105,7 +105,7 @@ All config definitions can be **domain-scoped**: when `--domain` is specified, c
 | Definition | Description | Used by |
 |------------|-------------|---------|
 | `search-config` | PubMed query terms, MeSH terms, date window, API key | Search |
-| `filter-config` | Include/exclude study types, journal list, language, LLM triage prompt and threshold, per-domain dedup path | Filter |
+| `filter-config` | Include/exclude study types, journal list, language, LLM triage prompt and threshold, per-domain dedup path. `priority_journals` also used by Search stage for preindex queries. | Filter, Search (preindex) |
 | `summary-config` | LLM prompt template, output sections, tone, length constraints, subdomain taxonomy | Summarize |
 | `blog-config` | Site title, base URL, publish toggle, template paths (global templates, domain-overridable) | Distribute (blog-publish) |
 | `distribute-config` | Digest title, opening/closing text, sort order, output paths | Distribute (digest-build) |
@@ -175,6 +175,7 @@ Architecture decisions for the current scope deliberately leave room for planned
 | A8 | User-editable blog templates in config/ | Hardcoded in Python; Jinja2 | Templates as config files preserve the code-vs-config separation. Simple placeholder substitution avoids adding Jinja2 as a dependency. | 2026-03-23 |
 | A9 | Resend for email delivery | SendGrid; AWS SES; SMTP | Simplest API, generous free tier (100 emails/day), single sender email verification. No DNS changes needed to start with test sender. | 2026-03-23 |
 | A10 | Domain-scoped config: each domain is a directory under `config/domains/{name}/` with all 6 config YAMLs + prompts, selected via `--domain` CLI arg. Schema versioned via `domain.yaml`. One cron run per domain (matrix strategy). | Single config with domain prefixes; env var switching; database-backed config | Directory-per-domain gives full isolation. Each domain is self-contained and copyable. `_template/` makes onboarding mechanical — no code changes needed to add a domain. Schema versioning is advisory (WARNING log, non-fatal). Global settings (API keys, rate limits, blog templates) remain shared. | 2026-03-24 |
+| A11 | Parallel preindex Title/Abstract search limited to priority journals for pre-MeSH articles. MeSH search uses `[Date - MeSH Date]`; preindex uses `[Date - Entry]`. | Wider MeSH query; OR text terms into MeSH query; separate pipeline stage | Top-tier journals appear in PubMed before MeSH indexing (days to weeks). A parallel text search catches these early without polluting the precise MeSH query. Different date fields align each query with when its terms become matchable. Journal limitation keeps noise manageable. `seen_pmids.json` suppresses duplicates across runs. | 2026-04-02 |
 
 ## Phase Map
 
