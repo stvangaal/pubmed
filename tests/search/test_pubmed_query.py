@@ -25,10 +25,10 @@ class TestBuildQuery:
         query = build_query(config, run_date=datetime(2026, 3, 23))
         assert "thrombectomy" in query.lower()
 
-    def test_date_range_uses_entry_date(self):
+    def test_date_range_uses_mesh_date(self):
         config = SearchConfig(mesh_terms=["stroke"], date_window_days=7)
         query = build_query(config, run_date=datetime(2026, 3, 23))
-        assert "edat" in query.lower() or "date - entry" in query.lower() or "2026" in query
+        assert "[Date - MeSH Date]" in query
 
     def test_custom_date_window(self):
         config = SearchConfig(mesh_terms=["stroke"], date_window_days=14)

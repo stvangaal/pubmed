@@ -30,14 +30,19 @@ def build_query(config: SearchConfig, run_date: datetime | None = None) -> str:
     """Build a PubMed query string from a SearchConfig.
 
     Combines MeSH terms with OR, adds any additional free-text terms,
-    and appends a date range filter using [Date - Entry].
+    and appends a date range filter using [Date - MeSH Date] (MHDA).
+
+    Uses MHDA (the date MeSH terms were assigned) rather than EDAT
+    (entry date) so articles are found when they become MeSH-searchable.
+    Without this, articles that take >date_window_days to receive MeSH
+    indexing are permanently missed.
 
     The end date is run_date minus 1 day (exclusive) to prevent overlap
     between consecutive runs. The start date is run_date minus
     date_window_days.
 
     Example output:
-        "stroke"[MeSH Major Topic] AND 2026/03/16:2026/03/22[Date - Entry]
+        "stroke"[MeSH Major Topic] AND 2026/03/16:2026/03/22[Date - MeSH Date]
     """
     if run_date is None:
         run_date = datetime.now()
@@ -60,11 +65,13 @@ def build_query(config: SearchConfig, run_date: datetime | None = None) -> str:
     # Date range: start = run_date - window, end = run_date - 1 day.
     # PubMed ranges are inclusive on both ends, so subtracting 1 from the
     # end date prevents the same article appearing in two consecutive runs.
+    # Uses [Date - MeSH Date] (MHDA) so articles are caught when they
+    # become MeSH-searchable, not when they first entered PubMed.
     start_date = run_date - timedelta(days=config.date_window_days)
     end_date = run_date - timedelta(days=1)
     date_range = (
         f"{start_date.strftime('%Y/%m/%d')}:{end_date.strftime('%Y/%m/%d')}"
-        f"[Date - Entry]"
+        f"[Date - MeSH Date]"
     )
     parts.append(date_range)
 
