@@ -47,18 +47,20 @@ Query PubMed's E-utilities API for recent stroke-related publications and parse 
 
 ### Query Construction (MeSH Search)
 
-Build a PubMed query string from `SearchConfig`:
+Build the term part of a PubMed query string from `SearchConfig`:
 
 1. Combine `mesh_terms` as OR-joined `"term"[MeSH Major Topic]` clauses.
 2. AND with any `additional_terms` (free-text, OR-joined).
-3. AND with a date range filter: `{run_date - date_window_days}:{run_date - 1 day}[Date - MeSH Date]`.
-   - Use `[Date - MeSH Date]` (MHDA — when NLM assigned MeSH terms), not `[Date - Entry]` — this ensures articles are found when they become MeSH-searchable, preventing permanent misses when indexing takes longer than `date_window_days`.
-   - PubMed date ranges are **inclusive on both ends**. To prevent overlap between consecutive weekly runs, the end date must be offset by one day (e.g., for a run on March 23, the range is `2026/03/16:2026/03/22`). The next run starts on `2026/03/23`.
 
-Example constructed query:
+Date filtering is applied via the esearch API's `datetype`, `mindate`, `maxdate` parameters (not embedded in the query string):
+- `datetype=mhda` — filter by MeSH indexing date (when NLM assigned MeSH terms). This ensures articles are found when they become MeSH-searchable, preventing permanent misses when indexing takes longer than `date_window_days`.
+- `mindate` = run_date - date_window_days, `maxdate` = run_date - 1 day. PubMed date ranges are **inclusive on both ends**. The offset-by-one prevents the same article appearing in consecutive runs.
+
+Example constructed query (term part only):
 ```
-"stroke"[MeSH Major Topic] AND 2026/03/16:2026/03/22[Date - MeSH Date]
+"stroke"[MeSH Major Topic]
 ```
+With esearch params: `datetype=mhda&mindate=2026/03/16&maxdate=2026/03/22`
 
 ### Query Construction (Preindex Search)
 
@@ -66,14 +68,15 @@ For each topic, build a parallel Title/Abstract query limited to priority journa
 
 1. Convert each `mesh_term` to `"term"[Title/Abstract]` (OR-joined). Include `additional_terms` if present.
 2. AND with a journal filter: OR-joined `"journal"[Journal]` clauses from `priority_journals`.
-3. AND with a date range using `[Date - Entry]` (EDAT — when the article entered PubMed). This is correct for preindex because we want articles from the moment they appear, before MeSH indexing.
 
-Example constructed query:
+Date filtering via esearch params: `datetype=edat` (entry date — when the article entered PubMed). This is correct for preindex because we want articles from the moment they appear, before MeSH indexing.
+
+Example constructed query (term part only):
 ```
 ("atrial fibrillation"[Title/Abstract]) AND
-  ("the new england journal of medicine"[Journal] OR "the lancet"[Journal]) AND
-  2026/03/23:2026/03/29[Date - Entry]
+  ("the new england journal of medicine"[Journal] OR "the lancet"[Journal])
 ```
+With esearch params: `datetype=edat&mindate=2026/03/23&maxdate=2026/03/29`
 
 ### Search Flow Diagram
 
@@ -85,12 +88,12 @@ Example constructed query:
   │   ─────────────────────────                                 │
   │                                                             │
   │     "stroke"[MeSH Major Topic]                              │
-  │       AND date_range[Date - MeSH Date]                      │
+  │       + esearch datetype=mhda                               │
   │         │                                                   │
   │         ├── primary search ──────────────────┐              │
   │         │                                    │              │
   │     "atrial fibrillation"[MeSH Major Topic]  │              │
-  │       AND date_range[Date - MeSH Date]       │              │
+  │       + esearch datetype=mhda                │              │
   │         │                                    │              │
   │         ├── topic: af ───────────────────┐   │              │
   │         ⋮  (one per topic)               │   │              │
@@ -102,13 +105,13 @@ Example constructed query:
   │                                     │   seen   │           │
   │     "stroke"[Title/Abstract]        │   wins)  │           │
   │       AND journals[Journal]         └────┬─────┘           │
-  │       AND date_range[Date - Entry]       │                  │
+  │       + esearch datetype=edat            │                  │
   │         │                                │                  │
   │         ├── primary (preindex) ──────────┤                  │
   │         │                                │                  │
   │     "atrial fibrillation"[Title/Abs.]    │                  │
   │       AND journals[Journal]              │                  │
-  │       AND date_range[Date - Entry]       │                  │
+  │       + esearch datetype=edat            │                  │
   │         │                                │                  │
   │         ├── topic: af (preindex) ────────┤                  │
   │         ⋮                                │                  │
@@ -131,9 +134,9 @@ Example constructed query:
                                      PubmedRecord@filtered
 ```
 
-**Date field summary:**
-- MeSH search: `[Date - MeSH Date]` — finds articles when MeSH terms are assigned
-- Preindex search: `[Date - Entry]` — finds articles when they first enter PubMed
+**Date field summary** (applied via esearch API params, not inline query syntax):
+- MeSH search: `datetype=mhda` — finds articles when MeSH terms are assigned
+- Preindex search: `datetype=edat` — finds articles when they first enter PubMed
 - Suppression: `seen_pmids.json` prevents an article from being triaged twice across runs (preindex week 1 → MeSH week 2)
 
 ### API Calls
@@ -218,7 +221,7 @@ Return a list of `PubmedRecord` objects with status `"retrieved"` and the total 
 
 | ID | Decision | Alternatives Considered | Rationale | Date |
 |----|----------|------------------------|-----------|------|
-| PQ1 | MeSH search uses `[Date - MeSH Date]`; preindex search uses `[Date - Entry]` | `[Date - Publication]`, `[Date - Create]`, single date field for both | MeSH search needs MHDA (when MeSH terms were assigned) to avoid permanently missing articles that take >7 days to index. Preindex search needs EDAT (entry date) to catch articles the moment they appear. Using different date fields for each query type aligns the date window with when each query can actually match. | 2026-04-02 |
+| PQ1 | MeSH search uses `datetype=mhda`; preindex search uses `datetype=edat` (via esearch API params) | Inline `[Date - Entry]` in query string (original); `[Date - Publication]`; single date field for both | MeSH search needs MHDA (when MeSH terms were assigned) to avoid permanently missing articles that take >7 days to index. Preindex search needs EDAT (entry date) to catch articles the moment they appear. Date filtering via esearch API params (`datetype`/`mindate`/`maxdate`) rather than inline query syntax — PubMed does not support `[Date - MeSH Date]` as an inline field tag. | 2026-04-02 |
 | PQ2 | Use E-utilities directly, not a wrapper library | BioPython Entrez, PyMed | Direct API access avoids dependencies, is well-documented, and gives full control. The API surface we need is small (esearch + efetch). | 2026-03-23 |
 | PQ3 | Broad MeSH query, let filter stage narrow | Narrow query with article type filters | The spike showed filtered_types returned only 4/week — too few for robust filtering. Broad query (~42/week) gives the filter stage enough candidates to work with. | 2026-03-23 |
 | PQ4 | Rate limit with configurable delay, not hardcoded | Hardcoded 0.4s; no delay | Configurable respects both API-key and no-key scenarios. Default 0.4s is safe for keyless access (< 3 req/sec). | 2026-03-23 |

@@ -35,10 +35,11 @@ class SearchConfig:
 When `priority_journals` is configured in `filter-config.yaml`, the pipeline passes the journal list to `multi_search()` as the `preindex_journals` parameter. For each topic (and primary search), an additional Title/Abstract query runs in parallel, limited to the specified journals:
 
 ```
-"term"[Title/Abstract] AND ("journal1"[Journal] OR "journal2"[Journal] OR ...) AND date_range[Date - Entry]
+("term"[Title/Abstract]) AND ("journal1"[Journal] OR "journal2"[Journal] OR ...)
 ```
+With esearch API params: `datetype=edat&mindate=YYYY/MM/DD&maxdate=YYYY/MM/DD`
 
-This catches articles published in top-tier journals before NLM assigns MeSH terms. The preindex search uses `[Date - Entry]` (PubMed entry date) while the MeSH search uses `[Date - MeSH Date]` (MeSH indexing date). MeSH hits take dedup priority; preindex-only hits are tagged with `preindex=True` on the `PubmedRecord`.
+This catches articles published in top-tier journals before NLM assigns MeSH terms. Date filtering is applied via esearch API parameters (`datetype`/`mindate`/`maxdate`), not inline query syntax. The preindex search uses `datetype=edat` (PubMed entry date) while the MeSH search uses `datetype=mhda` (MeSH indexing date). MeSH hits take dedup priority; preindex-only hits are tagged with `preindex=True` on the `PubmedRecord`.
 
 The journal list is not part of `SearchConfig` — it is passed through from `FilterConfig.priority_journals` by the pipeline orchestrator.
 

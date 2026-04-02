@@ -8,54 +8,68 @@ from xml.etree import ElementTree as ET
 import pytest
 
 from src.models import PubmedRecord, SearchConfig
-from src.search.pubmed_query import build_query, build_preindex_query, parse_record, search
+from src.search.pubmed_query import (
+    build_query, build_preindex_query, _date_range, parse_record, search,
+)
 
 
 class TestBuildQuery:
     def test_basic_mesh_terms(self):
         config = SearchConfig(mesh_terms=["stroke"])
-        query = build_query(config, run_date=datetime(2026, 3, 23))
-        assert "stroke" in query.lower()
+        query = build_query(config)
+        assert '"stroke"[MeSH Major Topic]' in query
 
     def test_additional_terms_included(self):
         config = SearchConfig(
             mesh_terms=["stroke"],
             additional_terms=["thrombectomy"],
         )
-        query = build_query(config, run_date=datetime(2026, 3, 23))
+        query = build_query(config)
         assert "thrombectomy" in query.lower()
 
-    def test_date_range_uses_mesh_date(self):
+    def test_no_date_in_query_string(self):
+        """Date filtering is via esearch params, not in the query string."""
         config = SearchConfig(mesh_terms=["stroke"], date_window_days=7)
-        query = build_query(config, run_date=datetime(2026, 3, 23))
-        assert "[Date - MeSH Date]" in query
+        query = build_query(config)
+        assert "[Date" not in query
+        assert "2026" not in query
+
+
+class TestDateRange:
+    def test_date_range_values(self):
+        config = SearchConfig(mesh_terms=["stroke"], date_window_days=7)
+        mindate, maxdate = _date_range(config, run_date=datetime(2026, 3, 23))
+        assert mindate == "2026/03/16"
+        assert maxdate == "2026/03/22"
 
     def test_custom_date_window(self):
         config = SearchConfig(mesh_terms=["stroke"], date_window_days=14)
-        query = build_query(config, run_date=datetime(2026, 3, 23))
-        assert "2026/03/09" in query or "2026/03/10" in query or "2026" in query
+        mindate, maxdate = _date_range(config, run_date=datetime(2026, 3, 23))
+        assert mindate == "2026/03/09"
+        assert maxdate == "2026/03/22"
 
 
 class TestBuildPreindexQuery:
     def test_uses_title_abstract_field(self):
         config = SearchConfig(mesh_terms=["atrial fibrillation"])
         journals = ["the new england journal of medicine"]
-        query = build_preindex_query(config, journals, run_date=datetime(2026, 3, 30))
+        query = build_preindex_query(config, journals)
         assert "[Title/Abstract]" in query
         assert "[MeSH Major Topic]" not in query
 
     def test_includes_journal_filter(self):
         config = SearchConfig(mesh_terms=["stroke"])
         journals = ["the new england journal of medicine", "the lancet"]
-        query = build_preindex_query(config, journals, run_date=datetime(2026, 3, 30))
+        query = build_preindex_query(config, journals)
         assert '"the new england journal of medicine"[Journal]' in query
         assert '"the lancet"[Journal]' in query
 
-    def test_uses_date_entry(self):
+    def test_no_date_in_query_string(self):
+        """Date filtering is via esearch params, not in the query string."""
         config = SearchConfig(mesh_terms=["stroke"], date_window_days=7)
         journals = ["jama"]
-        query = build_preindex_query(config, journals, run_date=datetime(2026, 3, 30))
-        assert "[Date - Entry]" in query
+        query = build_preindex_query(config, journals)
+        assert "[Date" not in query
 
     def test_includes_additional_terms(self):
         config = SearchConfig(
@@ -63,13 +77,13 @@ class TestBuildPreindexQuery:
             additional_terms=["left atrial appendage"],
         )
         journals = ["jama"]
-        query = build_preindex_query(config, journals, run_date=datetime(2026, 3, 30))
+        query = build_preindex_query(config, journals)
         assert '"left atrial appendage"[Title/Abstract]' in query
 
     def test_multiple_mesh_terms_or_joined(self):
         config = SearchConfig(mesh_terms=["stroke", "brain ischemia"])
         journals = ["jama"]
-        query = build_preindex_query(config, journals, run_date=datetime(2026, 3, 30))
+        query = build_preindex_query(config, journals)
         assert '"stroke"[Title/Abstract]' in query
         assert '"brain ischemia"[Title/Abstract]' in query
         assert " OR " in query
