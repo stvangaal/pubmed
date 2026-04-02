@@ -1,0 +1,52 @@
+---
+// owner: digest-archive
+import Base from "../layouts/Base.astro";
+---
+
+<Base title="Login">
+  <h1>Sign in</h1>
+  <p style="margin-top: 0.5rem; color: var(--color-muted);">
+    Enter your email to receive a magic link.
+  </p>
+  <div id="auth-root" style="margin-top: 1.5rem;"></div>
+
+  <script>
+    import { supabase } from "../lib/supabase";
+
+    const root = document.getElementById("auth-root")!;
+
+    // Check if already logged in
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      window.location.href = "/preferences";
+    }
+
+    // Render login form
+    const form = document.createElement("form");
+    form.innerHTML = `
+      <label for="email" style="display:block;margin-bottom:0.5rem;font-weight:500;">Email</label>
+      <input type="email" id="email" name="email" required
+        style="padding:0.5rem;width:100%;max-width:20rem;border:1px solid #ccc;border-radius:4px;" />
+      <button type="submit"
+        style="display:block;margin-top:1rem;padding:0.5rem 1.5rem;background:#2563eb;color:white;border:none;border-radius:4px;cursor:pointer;">
+        Send magic link
+      </button>
+      <p id="status" style="margin-top:1rem;color:#666;"></p>
+    `;
+    root.appendChild(form);
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = (document.getElementById("email") as HTMLInputElement).value;
+      const status = document.getElementById("status")!;
+      status.textContent = "Sending...";
+
+      const { error } = await supabase.auth.signInWithOtp({ email });
+      if (error) {
+        status.textContent = `Error: ${error.message}`;
+      } else {
+        status.textContent = "Check your email for the login link!";
+      }
+    });
+  </script>
+</Base>
