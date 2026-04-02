@@ -17,7 +17,3 @@ subject: "Stroke Literature Weekly — {date_range}"
 
 # Domain owner email — receives troubleshooting report each run.
 owner_email: "Stephen@vangaal.ca"
-
-# Subscriber source: "yaml" sends via Resend to to_addresses above.
-# "kit" creates a Kit broadcast with per-subscriber topic filtering.
-subscriber_source: yaml

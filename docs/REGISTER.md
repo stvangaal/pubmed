@@ -14,6 +14,7 @@
 | blog-page | v0 | draft | — | blog-publish |
 | email-config | v0 | draft | — | email-send |
 | email-digest | v0 | draft | — | digest-build, email-send |
+| wp-config | v0 | draft | — | wp-publish |
 
 ## Spec Index
 
@@ -25,7 +26,8 @@
 | llm-summarize | Phase 2 | ready | src/summarize/__init__.py, src/summarize/llm_summarize.py, src/summarize/parse_summary.py, tests/summarize/__init__.py, tests/summarize/test_llm_summarize.py, tests/summarize/test_parse_summary.py, config/summary-config.yaml, config/prompts/summary-prompt.md | pubmed-record, summary-config |
 | digest-build | Phase 2 | in-progress | src/distribute/__init__.py, src/distribute/digest_build.py, tests/distribute/__init__.py, tests/distribute/test_digest_build.py, config/distribute-config.yaml | literature-summary, distribute-config, blog-page |
 | blog-publish | Phase 3 | ready | src/distribute/blog_publish.py, tests/distribute/test_blog_publish.py, config/blog-config.yaml, config/templates/blog-post.md, config/templates/blog-index.md | literature-summary, blog-config |
-| email-send | Phase 3 | in-progress | src/distribute/email_send.py, src/distribute/kit_send.py, tests/distribute/test_email_send.py, tests/distribute/test_kit_send.py, config/email-config.yaml | email-digest, email-config |
+| email-send | Phase 3 | in-progress | src/distribute/email_send.py, tests/distribute/test_email_send.py | email-digest, email-config |
+| wp-publish | Phase 3 | in-progress | src/distribute/wp_publish.py, src/distribute/wp_members.py, src/distribute/wp_digest.py, tests/distribute/test_wp_publish.py, tests/distribute/test_wp_members.py, config/domains/_template/wp-config.yaml, config/domains/stroke/wp-config.yaml, .github/workflows/weekly-member-digest.yml | literature-summary, wp-config |
 | project-infrastructure | Phase 0 | draft | src/__init__.py, tests/__init__.py, src/models.py, src/config.py, src/pipeline.py, requirements.txt, .gitignore | — |
 | domain-config | Phase 4 | implemented | config/domains/_template/domain.yaml, config/domains/_template/search-config.yaml, config/domains/_template/filter-config.yaml, config/domains/_template/summary-config.yaml, config/domains/_template/distribute-config.yaml, config/domains/_template/blog-config.yaml, config/domains/_template/email-config.yaml, config/domains/_template/prompts/triage-prompt.md, config/domains/_template/prompts/summary-prompt.md, config/domains/CHANGELOG.md, tests/test_domain_config.py | — |
 | stroke-migration | Phase 4 | implemented | config/domains/stroke/domain.yaml, config/domains/stroke/search-config.yaml, config/domains/stroke/filter-config.yaml, config/domains/stroke/summary-config.yaml, config/domains/stroke/distribute-config.yaml, config/domains/stroke/blog-config.yaml, config/domains/stroke/email-config.yaml, config/domains/stroke/prompts/triage-prompt.md, config/domains/stroke/prompts/summary-prompt.md | domain-config |
@@ -37,7 +39,7 @@
 |--------|-------|
 | draft | 1 |
 | ready | 5 |
-| in-progress | 2 |
+| in-progress | 3 |
 | implemented | 2 |
 
 ## Unowned Code

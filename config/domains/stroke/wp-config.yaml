@@ -1,0 +1,13 @@
+# owner: wp-publish
+# Stroke domain WordPress configuration.
+config_version: 1
+
+# Whether to upload articles to WordPress (set false to skip).
+enabled: false
+
+# WordPress site URL (no trailing slash).
+# TODO: Set to your WordPress site URL when ready.
+site_url: ""
+
+# Slug of the custom taxonomy registered for clinical topics.
+clinical_topics_taxonomy: "clinical_topics"

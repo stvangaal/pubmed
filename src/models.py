@@ -237,7 +237,6 @@ class DistributeConfig:
     closing: str = ""
     sort_by: str = "triage_score"
     full_summary_threshold: float = 0.80
-    universal_threshold: float = 0.80
     output: OutputConfig = field(default_factory=OutputConfig)
 
 
@@ -272,7 +271,15 @@ class EmailConfig:
     to_addresses: list[str] = field(default_factory=list)
     subject: str = "Stroke Literature Weekly — {date_range}"
     owner_email: str | None = None
-    subscriber_source: str = "yaml"  # "yaml" | "kit"
+
+
+@dataclass
+class WordPressConfig:
+    """See docs/definitions/wp-config.md."""
+
+    enabled: bool = False
+    site_url: str = ""
+    clinical_topics_taxonomy: str = "clinical_topics"
 
 
 @dataclass
