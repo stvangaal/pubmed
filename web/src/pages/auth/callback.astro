@@ -1,0 +1,59 @@
+---
+// owner: digest-archive
+import Base from "../../layouts/Base.astro";
+---
+
+<Base title="Signing in…">
+  <p id="status">Completing sign-in…</p>
+
+  <script>
+    import { supabase } from "../../lib/supabase";
+
+    const status = document.getElementById("status")!;
+
+    // Supabase magic links redirect here with either:
+    //   ?code=...  (PKCE flow, default in supabase-js v2)
+    //   #access_token=...  (implicit flow)
+
+    async function handleCallback() {
+      // 1. Try PKCE code exchange (query param)
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          status.textContent = `Sign-in failed: ${error.message}`;
+          return;
+        }
+        window.location.href = "/preferences";
+        return;
+      }
+
+      // 2. Try implicit flow (hash fragment) — supabase-js detects this
+      //    automatically when getSession() is called on a page with the hash.
+      const hash = window.location.hash;
+      if (hash && hash.includes("access_token")) {
+        // supabase-js auto-processes the hash on client init;
+        // give it a moment then check session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error || !session) {
+          status.textContent = `Sign-in failed: ${error?.message || "No session found"}`;
+          return;
+        }
+        window.location.href = "/preferences";
+        return;
+      }
+
+      // 3. Maybe already logged in (e.g. navigated here directly)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        window.location.href = "/preferences";
+        return;
+      }
+
+      status.innerHTML = 'No authentication data found. <a href="/login">Try signing in again</a>.';
+    }
+
+    handleCallback();
+  </script>
+</Base>

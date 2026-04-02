@@ -51,9 +51,40 @@ const { title } = Astro.props;
     <nav>
       <a href="/" class="brand">PubMed Monitor</a>
       <a href="/archive">Archive</a>
-      <a href="/preferences">Preferences</a>
-      <a href="/login">Login</a>
+      <a href="/preferences" id="nav-prefs" style="display:none;">Preferences</a>
+      <a href="/login" id="nav-login">Login</a>
+      <a href="#" id="nav-logout" style="display:none;">Sign out</a>
     </nav>
+    <script>
+      import { supabase } from "../lib/supabase";
+
+      async function updateNav() {
+        const { data: { session } } = await supabase.auth.getSession();
+        const loginLink = document.getElementById("nav-login")!;
+        const logoutLink = document.getElementById("nav-logout")!;
+        const prefsLink = document.getElementById("nav-prefs")!;
+
+        if (session) {
+          loginLink.style.display = "none";
+          logoutLink.style.display = "";
+          prefsLink.style.display = "";
+        } else {
+          loginLink.style.display = "";
+          logoutLink.style.display = "none";
+          prefsLink.style.display = "none";
+        }
+      }
+
+      document.getElementById("nav-logout")!.addEventListener("click", async (e) => {
+        e.preventDefault();
+        await supabase.auth.signOut();
+        window.location.href = "/";
+      });
+
+      // Listen for auth changes (e.g. callback page setting session)
+      supabase.auth.onAuthStateChange(() => updateNav());
+      updateNav();
+    </script>
     <main>
       <slot />
     </main>

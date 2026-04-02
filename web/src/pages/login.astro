@@ -41,7 +41,11 @@ import Base from "../layouts/Base.astro";
       const status = document.getElementById("status")!;
       status.textContent = "Sending...";
 
-      const { error } = await supabase.auth.signInWithOtp({ email });
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: redirectTo },
+      });
       if (error) {
         status.textContent = `Error: ${error.message}`;
       } else {
