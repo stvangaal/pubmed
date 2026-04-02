@@ -11,7 +11,6 @@ Arboretum is a spec-driven development framework for AI code agents. It provides
 | `SPEC-WORKFLOW.md` | Full workflow specification and governing rules |
 | `docs/templates/` | Starter templates for specs and other document types |
 | `.claude/skills/` | Slash skills (Claude Code commands) |
-| `examples/rule-flow-engine/` | Fully governed sample project |
 
 ## CLI Usage
 
@@ -19,8 +18,8 @@ Arboretum is a spec-driven development framework for AI code agents. It provides
 # Bootstrap a new spec-driven project
 bin/arboretum bootstrap ~/Projects/my-project
 
-# Update an existing project (run from within the project)
-./arboretum update
+# Update is planned but not yet implemented.
+# For now, re-run bootstrap — it is idempotent.
 ```
 
 ## Development Workflow Rules
@@ -32,10 +31,23 @@ bin/arboretum bootstrap ~/Projects/my-project
 
 | Skill | Purpose |
 |---|---|
+| `/architect` | Design and maintain architecture structure |
+| `/check-contracts` | Check version pin staleness |
+| `/check-register` | File ownership audit |
+| `/cleanup` | Post-merge cleanup |
+| `/consolidate` | Generate specs from existing code |
+| `/design` | Orchestrate design phase |
+| `/finish` | Complete implementation, verify, create PR |
+| `/generate-register` | Auto-generate REGISTER.md from spec frontmatter |
 | `/generate-spec` | Create specs interactively |
 | `/health-check` | Check for drift and orphaned files |
+| `/init-project` | Initialize new project with spec governance |
+| `/orient` | Codebase orientation via project-graph.yaml |
 | `/pr` | Spec-aware pull request creation |
-| `/consolidate` | Generate specs from existing code |
-| `/check-register` | File ownership audit |
 | `/promote-spec` | Advance spec through status machine |
-| `/architect` | Design and maintain architecture structure |
+| `/reflect` | Lightweight learning interview |
+| `/security-review` | Analyze AI-facing code for prompt injection |
+| `/spec-status` | Dashboard of all spec statuses |
+| `/start` | Entry point for new work |
+| `/sync-contracts` | Regenerate contracts.yaml from specs |
+| `/validate-refs` | Cross-reference validation |
