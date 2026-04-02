@@ -25,7 +25,7 @@ ready
 Phase 1
 
 ## Purpose
-Score rule-filtered PubMed records for clinical relevance using an LLM. This is the second pass of the hybrid filter — it applies clinical judgment to the ~30-80 articles that survive rule-based filtering, selecting the most practice-relevant ones for summarization. The triage score and rationale are carried forward to the summarization stage.
+Score rule-filtered PubMed records for clinical relevance using an LLM. This is the second pass of the hybrid filter — it applies clinical judgment to the ~150-200 articles that survive rule-based filtering across all search topics, selecting the most practice-relevant ones for summarization. The triage score and rationale are carried forward to the summarization stage.
 
 ## Requires (Inbound Contracts)
 

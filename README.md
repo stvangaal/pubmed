@@ -171,10 +171,10 @@ Customize the blog page and index templates in `config/templates/`. Edit `config
 
 ## Cost
 
-At typical volumes (~50 articles/week, ~5-10 summaries):
-- LLM triage: ~$0.02/run (Sonnet 4.6)
-- Summarization: ~$0.01/run (Sonnet 4.6)
-- **Total: ~$0.03/week**
+At typical volumes (~185 articles triaged/week, ~10 summaries):
+- LLM triage: ~$1.05/run (Sonnet 4.6)
+- Summarization: ~$0.10/run (Sonnet 4.6)
+- **Total: ~$1.15/week**
 
 ## License
 

@@ -7,24 +7,24 @@ owner: architecture
 
 ## Purpose
 
-Aggressively reduce the candidate set to only practice-changing stroke publications. Uses a two-pass approach: fast rule-based filtering first (free, deterministic), then LLM triage on survivors (nuanced, costs tokens). Target output: ~5 articles per week.
+Aggressively reduce the candidate set to only practice-changing stroke publications. Uses a two-pass approach: fast rule-based filtering first (free, deterministic), then LLM triage on survivors (nuanced, costs tokens). Target output: ~10 articles per week.
 
 ## Boundaries
 
 **Input:** `pubmed-record@retrieved` (~40-130 records, mix of MeSH-indexed and preindex articles)
 
-**Output:** `pubmed-record@filtered` (~5 records, scored and annotated with triage rationale; `preindex` and `source_topic` preserved)
+**Output:** `pubmed-record@filtered` (~10 records, scored and annotated with triage rationale; `preindex` and `source_topic` preserved)
 
 ## Member Specs
 
 | Spec | Responsibility |
 |------|---------------|
 | rule-filter | Apply deterministic filters: study type inclusion/exclusion, journal list, language, MeSH term matching |
-| llm-triage | Send surviving abstracts (~30) to LLM with stroke-domain triage prompt; score clinical relevance; apply threshold |
+| llm-triage | Send surviving abstracts (~150-200) to LLM with stroke-domain triage prompt; score clinical relevance; apply threshold |
 
 ## Internal Structure
 
-Sequential within the stage: `rule-filter` runs first (reduces ~200 to ~30), then `llm-triage` scores the survivors (reduces ~30 to ~5). This ordering is load-bearing — reversing it would waste LLM tokens on obviously irrelevant papers.
+Sequential within the stage: `rule-filter` runs first, then `llm-triage` scores the ~150-200 survivors (reduces to ~10). This ordering is load-bearing — reversing it would waste LLM tokens on obviously irrelevant papers.
 
 ## Boundary Definitions
 

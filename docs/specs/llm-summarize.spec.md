@@ -46,7 +46,7 @@ Generate stroke-domain clinical summaries for filtered PubMed records using an L
 ## Behaviour
 
 ### Input
-A list of `PubmedRecord` objects with status `@filtered` (typically ~5 per run) and a `SummaryConfig`.
+A list of `PubmedRecord` objects with status `@filtered` (typically ~10 per run) and a `SummaryConfig`.
 
 ### Processing
 For each filtered record:
