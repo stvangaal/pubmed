@@ -178,4 +178,4 @@ At typical volumes (~185 articles triaged/week, ~10 summaries):
 
 ## License
 
-MIT
+This project is licensed under the [Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)](LICENSE.md).
