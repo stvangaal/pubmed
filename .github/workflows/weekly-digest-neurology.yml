@@ -1,9 +1,9 @@
-# owner: project-infrastructure
-name: Weekly Digest — Stroke
+# owner: neurology-digest
+name: Weekly Digest — Neurology
 
 on:
   schedule:
-    - cron: '0 16 * * 1'  # Every Monday at 12pm noon EDT (16:00 UTC)
+    - cron: '0 17 * * 1'  # Every Monday at 1pm EDT (17:00 UTC)
   workflow_dispatch:  # Manual trigger
 
 permissions:
@@ -33,18 +33,10 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-        run: python3 -m src.pipeline --domain stroke
-
-      - name: Persist seen-pmids
-        run: |
-          if [[ -f "data/domains/${{ matrix.domain }}/seen-pmids.json" ]]; then
-            git add data/domains/${{ matrix.domain }}/seen-pmids.json
-            git diff --cached --quiet || git commit -m "Update seen-pmids for ${{ matrix.domain }} domain [skip ci]"
-            git push origin HEAD:${{ github.ref_name }}
-          fi
+        run: python3 -m src.pipeline --domain neurology
 
       - name: Upload digest artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: digest-stroke-${{ github.run_id }}
-          path: output/domains/stroke/
+          name: digest-neurology-${{ github.run_id }}
+          path: output/domains/neurology/
