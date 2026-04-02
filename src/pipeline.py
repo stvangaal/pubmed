@@ -79,7 +79,8 @@ def run():
         search_config.retmax = 20
         filter_config.llm_triage.max_articles = 3
         blog_config.publish = False
-        email_config.enabled = False
+        email_config.to_addresses = ["stephen@vangaal.ca"]
+        email_config.owner_email = "stephen@vangaal.ca"
 
     run_date = datetime.now()
     date_range = _make_date_range(run_date, search_config.date_window_days)

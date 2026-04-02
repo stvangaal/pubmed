@@ -17,7 +17,8 @@ def _apply_test_overrides(search_config, filter_config, blog_config, email_confi
     search_config.retmax = 20
     filter_config.llm_triage.max_articles = 3
     blog_config.publish = False
-    email_config.enabled = False
+    email_config.to_addresses = ["stephen@vangaal.ca"]
+    email_config.owner_email = "stephen@vangaal.ca"
 
 
 def test_test_mode_overrides():
@@ -36,7 +37,9 @@ def test_test_mode_overrides():
     assert search.retmax == 20
     assert filt.llm_triage.max_articles == 3
     assert blog.publish is False
-    assert email.enabled is False
+    assert email.enabled is True
+    assert email.to_addresses == ["stephen@vangaal.ca"]
+    assert email.owner_email == "stephen@vangaal.ca"
 
 
 def test_normal_mode_preserves_config():
