@@ -125,6 +125,7 @@ def run():
         filter_config.llm_triage,
         seen_pmids_path=filter_config.llm_triage.seen_pmids_file,
         topic_prompts=topic_prompts or None,
+        readonly_seen_pmids=test_mode,
     )
     logger.info(f"  {len(above)} above threshold, {len(below)} below")
     logger.info(f"  LLM triage cost: ${triage_usage.estimated_cost:.4f}")

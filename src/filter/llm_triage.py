@@ -33,6 +33,7 @@ def llm_triage(
     output_dir: str | None = None,
     seen_pmids_path: str = _SEEN_PMIDS_PATH,
     topic_prompts: dict[str, str] | None = None,
+    readonly_seen_pmids: bool = False,
 ) -> tuple[list[PubmedRecord], list[PubmedRecord], LLMUsage]:
     """Score records with an LLM and split by threshold.
 
@@ -45,6 +46,8 @@ def llm_triage(
         topic_prompts: Optional mapping of topic name → prompt file path.
             When a record's source_topic has an entry here, that prompt is
             used instead of the default triage prompt.
+        readonly_seen_pmids: When True, read seen-pmids for dedup but do
+            not write back. Used in test mode to avoid polluting the file.
 
     Returns:
         Tuple of (above_threshold, below_threshold, llm_usage) where the
@@ -152,8 +155,9 @@ def llm_triage(
             )
 
     # --- Update seen-PMIDs ---
-    new_pmids = {r.pmid for r in scored}
-    _save_seen_pmids(seen_pmids | new_pmids, seen_pmids_path)
+    if not readonly_seen_pmids:
+        new_pmids = {r.pmid for r in scored}
+        _save_seen_pmids(seen_pmids | new_pmids, seen_pmids_path)
 
     # --- Write output logs ---
     if output_dir is not None:
