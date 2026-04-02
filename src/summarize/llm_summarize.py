@@ -118,6 +118,7 @@ def _summarize_one(
         raw_llm_response=raw_response,
         source_topic=record.source_topic,
         preindex=record.preindex,
+        article_types=record.article_types,
     )
 
 

@@ -94,6 +94,12 @@ def _markdown_to_html(markdown: str) -> str:
             html_lines.append("</ul>")
             in_list = False
 
+        # Headings: ## text
+        if stripped.startswith("## "):
+            heading_text = _inline_format(stripped[3:])
+            html_lines.append(f"<h2>{heading_text}</h2>")
+            continue
+
         # Skip empty lines — <p> tags and <hr> provide spacing
         if not stripped:
             continue
