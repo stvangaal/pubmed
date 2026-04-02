@@ -11,12 +11,39 @@ from src.models import EmailConfig, EmailDigest, LLMUsage, PubmedRecord
 logger = logging.getLogger(__name__)
 
 
-def send_digest(digest: EmailDigest, config: EmailConfig) -> bool:
+def _resolve_recipients(
+    config: EmailConfig, domain: str | None = None
+) -> list[str]:
+    """Return the recipient list based on subscriber_source config.
+
+    Falls back to YAML to_addresses if Supabase returns nothing or
+    is not configured.
+    """
+    if config.subscriber_source == "supabase" and domain:
+        from src.distribute.subscriber_query import get_subscribers
+
+        supabase_recipients = get_subscribers(domain)
+        if supabase_recipients:
+            return supabase_recipients
+        logger.info(
+            "Supabase returned no subscribers for '%s', "
+            "falling back to YAML to_addresses",
+            domain,
+        )
+    return config.to_addresses
+
+
+def send_digest(
+    digest: EmailDigest,
+    config: EmailConfig,
+    domain: str | None = None,
+) -> bool:
     """Send the digest email to configured recipients.
 
     Args:
         digest: Assembled EmailDigest with markdown and plain_text content.
         config: EmailConfig with sender, recipients, and subject template.
+        domain: Domain name, used when subscriber_source is "supabase".
 
     Returns:
         True if the email was sent successfully, False otherwise.
@@ -25,8 +52,9 @@ def send_digest(digest: EmailDigest, config: EmailConfig) -> bool:
         logger.info("Email sending disabled (enabled: false), skipping")
         return False
 
-    if not config.to_addresses:
-        logger.warning("No recipients configured in email-config.yaml, skipping")
+    recipients = _resolve_recipients(config, domain)
+    if not recipients:
+        logger.warning("No recipients available, skipping email send")
         return False
 
     api_key = os.environ.get("RESEND_API_KEY")
@@ -44,7 +72,7 @@ def send_digest(digest: EmailDigest, config: EmailConfig) -> bool:
     try:
         params: resend.Emails.SendParams = {
             "from": config.from_address,
-            "to": config.to_addresses,
+            "to": recipients,
             "subject": subject,
             "html": _markdown_to_html(digest.markdown),
             "text": digest.plain_text,

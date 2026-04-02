@@ -22,6 +22,7 @@ from src.summarize.llm_summarize import summarize
 from src.distribute.blog_publish import publish_blog
 from src.distribute.digest_build import build_digest
 from src.distribute.email_send import send_digest, send_rejection_report
+from src.distribute.digest_upload import upload_digest
 
 logging.basicConfig(
     level=logging.INFO,
@@ -154,11 +155,22 @@ def run():
 
     # --- Stage 4c: Send email ---
     logger.info("Stage 4c: Send email")
-    sent = send_digest(digest, email_config)
+    sent = send_digest(digest, email_config, domain=domain)
     if sent:
-        logger.info("  Email sent to: %s", ", ".join(email_config.to_addresses))
+        logger.info("  Email sent to recipients")
     else:
         logger.info("  Email not sent (disabled, no key, or error)")
+
+    # --- Stage 4c+: Upload digest to Supabase archive ---
+    uploaded = upload_digest(
+        domain=domain or "default",
+        run_date=run_date_str,
+        digest=digest,
+        summaries=summaries,
+        blog_url=blog_page.page_url if blog_page.published else "",
+    )
+    if uploaded:
+        logger.info("  Digest uploaded to Supabase archive")
 
     # --- Stage 4d: Send troubleshooting report to owner ---
     logger.info("Stage 4d: Troubleshooting report")

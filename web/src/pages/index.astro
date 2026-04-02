@@ -1,0 +1,31 @@
+---
+// owner: digest-archive
+import Base from "../layouts/Base.astro";
+---
+
+<Base title="Home">
+  <h1>PubMed Monitor</h1>
+  <p style="margin-top: 1rem; color: var(--color-muted);">
+    AI-curated clinical literature digests, delivered weekly.
+  </p>
+
+  <section style="margin-top: 2rem;">
+    <h2>How it works</h2>
+    <ol style="margin-top: 0.5rem; padding-left: 1.5rem;">
+      <li>We search PubMed weekly for practice-changing publications</li>
+      <li>Articles are filtered and scored by AI for clinical relevance</li>
+      <li>Top articles get structured summaries written by AI</li>
+      <li>You receive a curated digest by email</li>
+    </ol>
+  </section>
+
+  <section style="margin-top: 2rem;">
+    <h2>Get started</h2>
+    <p style="margin-top: 0.5rem;">
+      <a href="/login" style="color: var(--color-primary);">Sign up</a> to choose
+      your domains of interest and start receiving digests.
+      Or <a href="/archive" style="color: var(--color-primary);">browse the archive</a>
+      to see past digests.
+    </p>
+  </section>
+</Base>
