@@ -6,8 +6,8 @@ A weekly automated pipeline that identifies practice-changing clinical publicati
 
 ```
 PubMed API → Search → Filter → Summarize → Blog → Digest → Email
-  ~50/week    rule-based   LLM triage    LLM summary   gh-pages   tiered     Resend
-              + LLM        (~5-10/week)  (full+short)  archive    rendering  delivery
+  ~200/week    rule-based   LLM triage    LLM summary   gh-pages   tiered     Resend
+              + LLM        (~25/week)  (full+short)  archive    rendering  delivery
 ```
 
 Every week, per domain, the pipeline:
