@@ -39,6 +39,11 @@ sort_by: triage_score  # triage_score (default) | subdomain | pub_date
 # 2-sentence teaser with a link to the full version on the blog.
 full_summary_threshold: 0.80
 
+# Articles scoring >= this threshold appear for ALL subscribers regardless
+# of tag preferences (Kit broadcasts only). Below this, articles are
+# filtered by subscriber tags via Liquid conditionals.
+universal_threshold: 0.80
+
 # Output settings
 output:
   # Where to write the digest text
@@ -62,6 +67,7 @@ class DistributeConfig:
     closing: str                 # Closing text
     sort_by: str                 # Article sort order: "triage_score" | "subdomain" | "pub_date"
     full_summary_threshold: float  # Score cutoff for full vs short summary in email (default: 0.80)
+    universal_threshold: float     # Articles >= this score go to ALL subscribers regardless of tags (default: 0.80)
     output: OutputConfig
 ```
 
@@ -75,6 +81,7 @@ When `--domain` is specified, this config is loaded from `config/domains/{domain
 - `closing` is plain text, no placeholders
 - `sort_by` must be one of: `"triage_score"`, `"subdomain"`, `"pub_date"`
 - `full_summary_threshold` must be between 0.0 and 1.0, and should be >= the triage inclusion threshold from `filter-config`
+- `universal_threshold` must be between 0.0 and 1.0; articles at or above this score bypass tag filtering in Kit broadcasts
 - `output.file` parent directory must exist or be creatable
 
 ## Changelog
@@ -83,3 +90,4 @@ When `--domain` is specified, this config is loaded from `config/domains/{domain
 |------|---------|--------|----------------|
 | 2026-03-23 | v0 | Initial draft | — |
 | 2026-03-23 | v0 | Added full_summary_threshold for tiered email rendering | digest-build |
+| 2026-04-02 | v0 | Added universal_threshold for tag-based Kit broadcast filtering (#33) | email-send |

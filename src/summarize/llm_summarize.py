@@ -104,7 +104,7 @@ def _summarize_one(
         title=record.title,
         journal=record.journal,
         pub_date=record.pub_date,
-        subdomain=parsed["subdomain"],
+        tags=parsed["tags"],
         citation=parsed["citation"],
         research_question=parsed["research_question"],
         key_finding=parsed["key_finding"],

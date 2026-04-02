@@ -83,7 +83,7 @@ class LiteratureSummary:
     title: str
     journal: str
     pub_date: str
-    subdomain: str
+    tags: list[str]
     citation: str
     research_question: str
     key_finding: str
@@ -98,6 +98,11 @@ class LiteratureSummary:
     source_topic: str = ""
     preindex: bool = False
     article_types: list[str] = field(default_factory=list)
+
+    @property
+    def subdomain(self) -> str:
+        """Primary tag (first in list). Backward-compat with single-tag code paths."""
+        return self.tags[0] if self.tags else "General"
 
 
 @dataclass
@@ -232,6 +237,7 @@ class DistributeConfig:
     closing: str = ""
     sort_by: str = "triage_score"
     full_summary_threshold: float = 0.80
+    universal_threshold: float = 0.80
     output: OutputConfig = field(default_factory=OutputConfig)
 
 

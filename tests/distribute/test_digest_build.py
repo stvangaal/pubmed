@@ -11,7 +11,7 @@ from src.models import LiteratureSummary
 
 def _make_summary(
     pmid: str = "1",
-    subdomain: str = "Prevention",
+    tags: list[str] | None = None,
     triage_score: float = 0.85,
     article_types: list[str] | None = None,
 ) -> LiteratureSummary:
@@ -21,7 +21,7 @@ def _make_summary(
         title=f"Test Article {pmid}",
         journal="Test Journal",
         pub_date="2026-01-01",
-        subdomain=subdomain,
+        tags=tags if tags is not None else ["Prevention"],
         citation=f"Test Article {pmid}. *Test Journal*. [PMID {pmid}](url)",
         research_question="What is tested?",
         key_finding="Testing works.",
@@ -42,28 +42,39 @@ def _make_summary(
 class TestGroupBySubdomain:
     def test_groups_by_subdomain_field(self):
         summaries = [
-            _make_summary(pmid="1", subdomain="Prevention"),
-            _make_summary(pmid="2", subdomain="Imaging"),
-            _make_summary(pmid="3", subdomain="Prevention"),
+            _make_summary(pmid="1", tags=["Prevention"]),
+            _make_summary(pmid="2", tags=["Imaging"]),
+            _make_summary(pmid="3", tags=["Prevention"]),
         ]
         groups = _group_by_subdomain(summaries)
         assert list(groups.keys()) == ["Prevention", "Imaging"]
         assert len(groups["Prevention"]) == 2
         assert len(groups["Imaging"]) == 1
 
-    def test_empty_subdomain_falls_back_to_general(self):
-        summaries = [_make_summary(pmid="1", subdomain="")]
+    def test_empty_tags_falls_back_to_general(self):
+        summaries = [_make_summary(pmid="1", tags=[])]
         groups = _group_by_subdomain(summaries)
         assert "General" in groups
 
     def test_preserves_insertion_order(self):
         summaries = [
-            _make_summary(pmid="1", subdomain="Imaging"),
-            _make_summary(pmid="2", subdomain="Acute Treatment"),
-            _make_summary(pmid="3", subdomain="Imaging"),
+            _make_summary(pmid="1", tags=["Imaging"]),
+            _make_summary(pmid="2", tags=["Acute Treatment"]),
+            _make_summary(pmid="3", tags=["Imaging"]),
         ]
         groups = _group_by_subdomain(summaries)
         assert list(groups.keys()) == ["Imaging", "Acute Treatment"]
+
+    def test_groups_by_primary_tag(self):
+        """Multi-tag article groups under its primary (first) tag."""
+        summaries = [
+            _make_summary(pmid="1", tags=["Imaging", "Prevention"]),
+            _make_summary(pmid="2", tags=["Prevention"]),
+        ]
+        groups = _group_by_subdomain(summaries)
+        assert list(groups.keys()) == ["Imaging", "Prevention"]
+        assert len(groups["Imaging"]) == 1
+        assert len(groups["Prevention"]) == 1
 
 
 class TestSubdomainLabel:

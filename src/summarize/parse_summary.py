@@ -28,11 +28,11 @@ def parse_summary(
     try:
         lines = raw_response.strip().split("\n")
 
-        # --- Subdomain: first non-empty line, stripped of ** markers ---
-        subdomain = _extract_subdomain(lines, subdomain_options)
-        if subdomain is None:
+        # --- Tags: first non-empty line, comma-separated ---
+        tags = _extract_tags(lines, subdomain_options)
+        if tags is None:
             logger.warning(
-                "Could not extract valid subdomain from response: %s",
+                "Could not extract valid tags from response: %s",
                 raw_response[:200],
             )
             return None
@@ -92,7 +92,7 @@ def parse_summary(
             return None
 
         return {
-            "subdomain": subdomain,
+            "tags": tags,
             "citation": citation,
             "research_question": research_question,
             "key_finding": key_finding,
@@ -107,33 +107,59 @@ def parse_summary(
         return None
 
 
-def _extract_subdomain(
+def _extract_tags(
     lines: list[str], subdomain_options: list[str]
-) -> str | None:
-    """Find the subdomain from the first non-empty line.
+) -> list[str] | None:
+    """Extract one or more tags from the first non-empty line.
 
-    The LLM wraps it in ** markers, e.g. '**Acute Treatment**'.
-    We strip the markers and validate against the allowed options.
+    Supports two formats:
+    - New multi-tag: '**Tags:** Acute Treatment, Prevention'
+    - Legacy single-tag: '**Acute Treatment**'
+
+    Validates each tag against allowed options (case-insensitive).
+    Returns the validated tag list, or None if no valid tags found.
     """
     for line in lines:
         stripped = line.strip()
         if not stripped:
             continue
-        # Remove ** markers if present
-        cleaned = stripped.replace("**", "").strip()
-        if cleaned in subdomain_options:
-            return cleaned
-        # Check case-insensitive match as a fallback
-        for option in subdomain_options:
-            if cleaned.lower() == option.lower():
-                return option
-        # First non-empty line wasn't a valid subdomain
-        logger.warning(
-            "Subdomain '%s' not in allowed options: %s",
-            cleaned,
-            subdomain_options,
-        )
-        return None
+
+        # New format: **Tags:** Tag1, Tag2
+        cleaned_upper = stripped.replace("**", "").strip().upper()
+        if cleaned_upper.startswith("TAGS:"):
+            # Strip all ** markers first, then extract after "Tags:"
+            cleaned = stripped.replace("**", "").strip()
+            after_prefix = cleaned.split(":", 1)[1].strip()
+            raw_tags = [t.strip() for t in after_prefix.split(",") if t.strip()]
+        else:
+            # Legacy format: **Acute Treatment**
+            cleaned = stripped.replace("**", "").strip()
+            raw_tags = [cleaned] if cleaned else []
+
+        # Validate each tag against allowed options
+        validated: list[str] = []
+        for raw in raw_tags:
+            matched = _match_tag(raw, subdomain_options)
+            if matched:
+                validated.append(matched)
+            else:
+                logger.warning(
+                    "Tag '%s' not in allowed options: %s",
+                    raw,
+                    subdomain_options,
+                )
+
+        return validated if validated else None
+    return None
+
+
+def _match_tag(raw: str, subdomain_options: list[str]) -> str | None:
+    """Match a raw tag string against allowed options (case-insensitive)."""
+    if raw in subdomain_options:
+        return raw
+    for option in subdomain_options:
+        if raw.lower() == option.lower():
+            return option
     return None
 
 
