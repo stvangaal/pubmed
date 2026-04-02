@@ -36,7 +36,7 @@ class EmailConfig:
     to_addresses: list[str]    # Recipient email addresses
     subject: str               # Subject template with {date_range}, {article_count} placeholders
     owner_email: str | None    # Domain owner email for troubleshooting reports
-    subscriber_source: str     # "yaml" | "supabase" — where to get recipients
+    subscriber_source: str     # "yaml" | "kit" — delivery backend
 ```
 
 ## Domain Scoping
@@ -49,7 +49,7 @@ When `--domain` is specified, this config is loaded from `config/domains/{domain
 - `to_addresses` must contain at least one valid email when `enabled` is true and `subscriber_source` is `yaml`
 - `subject` may contain `{date_range}` and `{article_count}` placeholders — both are optional
 - When using `onboarding@resend.dev`, emails can only be delivered to the Resend account owner's email
-- `subscriber_source` must be `yaml` or `supabase`. When `supabase`, requires `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` environment variables. Falls back to `to_addresses` if Supabase query returns no results
+- `subscriber_source` must be `yaml` or `kit`. When `kit`, requires `KIT_API_SECRET` environment variable. The pipeline creates a Kit broadcast with Liquid conditional blocks for per-subscriber topic filtering. Subscribers manage their own topic preferences via Kit's built-in profile page
 
 ## Changelog
 

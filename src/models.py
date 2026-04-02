@@ -266,7 +266,7 @@ class EmailConfig:
     to_addresses: list[str] = field(default_factory=list)
     subject: str = "Stroke Literature Weekly — {date_range}"
     owner_email: str | None = None
-    subscriber_source: str = "yaml"  # "yaml" | "supabase"
+    subscriber_source: str = "yaml"  # "yaml" | "kit"
 
 
 @dataclass
