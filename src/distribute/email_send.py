@@ -7,11 +7,8 @@ import os
 import resend
 
 from src.models import (
-    BlogPage,
-    DistributeConfig,
     EmailConfig,
     EmailDigest,
-    LiteratureSummary,
     LLMUsage,
     PubmedRecord,
 )
@@ -22,22 +19,12 @@ logger = logging.getLogger(__name__)
 def send_digest(
     digest: EmailDigest,
     config: EmailConfig,
-    summaries: list[LiteratureSummary] | None = None,
-    distribute_config: DistributeConfig | None = None,
-    blog_page: BlogPage | None = None,
 ) -> bool:
-    """Send the digest email to configured recipients.
-
-    When subscriber_source is "kit", creates a Kit broadcast with Liquid
-    conditional blocks for per-subscriber topic filtering. Otherwise sends
-    via Resend to the static to_addresses list.
+    """Send the digest email to configured recipients via Resend.
 
     Args:
         digest: Assembled EmailDigest with markdown and plain_text content.
         config: EmailConfig with sender, recipients, and subject template.
-        summaries: Raw summaries (required for Kit path).
-        distribute_config: DistributeConfig (required for Kit path).
-        blog_page: Optional BlogPage for article URLs (Kit path).
 
     Returns:
         True if the email was sent successfully, False otherwise.
@@ -46,29 +33,6 @@ def send_digest(
         logger.info("Email sending disabled (enabled: false), skipping")
         return False
 
-    # --- Kit path: create broadcast with Liquid conditionals ---
-    if config.subscriber_source == "kit":
-        if summaries is None or distribute_config is None:
-            logger.warning(
-                "Kit mode requires summaries and distribute_config; "
-                "falling back to Resend"
-            )
-        else:
-            from src.distribute.kit_send import (
-                build_kit_broadcast_html,
-                send_kit_broadcast,
-            )
-
-            html = build_kit_broadcast_html(
-                summaries, distribute_config, digest.date_range, blog_page
-            )
-            subject = config.subject.format(
-                date_range=digest.date_range,
-                article_count=digest.article_count,
-            )
-            return send_kit_broadcast(html, subject)
-
-    # --- Resend path (default) ---
     if not config.to_addresses:
         logger.warning("No recipients configured in email-config.yaml, skipping")
         return False

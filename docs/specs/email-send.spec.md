@@ -5,7 +5,6 @@ owner: distribute
 owns:
   - src/distribute/email_send.py
   - tests/distribute/test_email_send.py
-  - config/email-config.yaml
 requires:
   - name: email-digest
     version: v0

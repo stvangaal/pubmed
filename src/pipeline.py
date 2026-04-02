@@ -154,12 +154,7 @@ def run():
 
     # --- Stage 4c: Send email ---
     logger.info("Stage 4c: Send email")
-    sent = send_digest(
-        digest, email_config,
-        summaries=summaries,
-        distribute_config=distribute_config,
-        blog_page=blog_page,
-    )
+    sent = send_digest(digest, email_config)
     if sent:
         logger.info("  Email sent to recipients")
     else:

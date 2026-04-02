@@ -33,7 +33,6 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          KIT_API_SECRET: ${{ secrets.KIT_API_SECRET }}
         run: python3 -m src.pipeline --domain stroke
 
       - name: Persist seen-pmids

@@ -32,10 +32,6 @@ sort_by: triage_score
 # (All articles get the full summary on the blog page regardless.)
 full_summary_threshold: 0.80
 
-# Articles scoring >= this threshold appear for ALL subscribers regardless
-# of tag preferences. Below this, articles are filtered by subscriber tags.
-universal_threshold: 0.80
-
 output:
   file: output/domains/stroke/digest.md
   plain_text: true
