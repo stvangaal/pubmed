@@ -71,6 +71,56 @@ def build_query(config: SearchConfig, run_date: datetime | None = None) -> str:
     return " AND ".join(parts)
 
 
+def build_preindex_query(
+    config: SearchConfig,
+    journals: list[str],
+    run_date: datetime | None = None,
+) -> str:
+    """Build a Title/Abstract query limited to specific journals.
+
+    Used to catch recently published articles before MeSH indexing.
+    Searches the same terms as build_query() but uses [Title/Abstract]
+    instead of [MeSH Major Topic], restricted to the given journal list.
+
+    Uses [Date - Entry] (PubMed entry date), which is correct for
+    pre-index articles — we want records from the moment they appear,
+    not from when MeSH terms are assigned.
+
+    Example output:
+        ("atrial fibrillation"[Title/Abstract]) AND
+        ("N Engl J Med"[Journal] OR "Lancet"[Journal]) AND
+        2026/03/16:2026/03/22[Date - Entry]
+    """
+    if run_date is None:
+        run_date = datetime.now()
+
+    # Text terms — OR-joined, each wrapped with [Title/Abstract].
+    text_clauses = [f'"{term}"[Title/Abstract]' for term in config.mesh_terms]
+    if config.additional_terms:
+        text_clauses.extend(
+            f'"{term}"[Title/Abstract]' for term in config.additional_terms
+        )
+    text_part = " OR ".join(text_clauses)
+    if len(text_clauses) > 1:
+        text_part = f"({text_part})"
+
+    # Journal filter — OR-joined.
+    journal_clauses = [f'"{j}"[Journal]' for j in journals]
+    journal_part = " OR ".join(journal_clauses)
+    if len(journal_clauses) > 1:
+        journal_part = f"({journal_part})"
+
+    # Date range (same logic as build_query).
+    start_date = run_date - timedelta(days=config.date_window_days)
+    end_date = run_date - timedelta(days=1)
+    date_range = (
+        f"{start_date.strftime('%Y/%m/%d')}:{end_date.strftime('%Y/%m/%d')}"
+        f"[Date - Entry]"
+    )
+
+    return f"{text_part} AND {journal_part} AND {date_range}"
+
+
 # ---------------------------------------------------------------------------
 # API calls
 # ---------------------------------------------------------------------------
@@ -230,6 +280,73 @@ def parse_record(article_elem: ET.Element) -> PubmedRecord | None:
 # Main search orchestrator
 # ---------------------------------------------------------------------------
 
+def _execute_query(
+    query: str,
+    retmax: int = 200,
+    rate_limit_delay: float = 0.4,
+    api_key: str | None = None,
+    require_abstract: bool = True,
+) -> tuple[list[PubmedRecord], int]:
+    """Execute a pre-built PubMed query through esearch, efetch, and parse.
+
+    Shared by both MeSH-based search() and preindex searches in
+    multi_search().  Callers build the query string; this function
+    handles the API round-trips and XML parsing.
+
+    Returns (records, total_count).
+    """
+    logger.info("Executing query: %s", query)
+
+    pmids, total_count = esearch(
+        query,
+        retmax=retmax,
+        rate_limit_delay=rate_limit_delay,
+        api_key=api_key,
+    )
+
+    if not pmids:
+        logger.info("No results returned by esearch")
+        return [], total_count
+
+    batch_size = 200
+    records: list[PubmedRecord] = []
+
+    for i in range(0, len(pmids), batch_size):
+        batch = pmids[i : i + batch_size]
+        xml_data = efetch(
+            batch,
+            rate_limit_delay=rate_limit_delay,
+            api_key=api_key,
+        )
+
+        root = ET.fromstring(xml_data)
+        articles = root.findall(".//PubmedArticle")
+        logger.info(
+            "Batch %d-%d: fetched %d articles",
+            i, i + len(batch), len(articles),
+        )
+
+        for article in articles:
+            record = parse_record(article)
+            if record is None:
+                continue
+
+            if require_abstract and not record.abstract:
+                logger.info(
+                    "Excluding PMID %s: missing abstract", record.pmid
+                )
+                continue
+
+            records.append(record)
+
+    logger.info(
+        "Query complete: %d records returned (esearch total: %d)",
+        len(records),
+        total_count,
+    )
+    return records, total_count
+
+
 def search(
     config: SearchConfig,
     run_date: datetime | None = None,
@@ -246,65 +363,19 @@ def search(
     reported by esearch (useful for logging/metrics).
     """
     query = build_query(config, run_date)
-    logger.info("Constructed query: %s", query)
-
-    # Step 1: esearch — get PMIDs.
-    pmids, total_count = esearch(
+    return _execute_query(
         query,
         retmax=config.retmax,
         rate_limit_delay=config.rate_limit_delay,
         api_key=config.api_key,
+        require_abstract=config.require_abstract,
     )
-
-    if not pmids:
-        logger.info("No results returned by esearch")
-        return [], total_count
-
-    # Step 2: efetch — fetch in batches of 200.
-    batch_size = 200
-    records: list[PubmedRecord] = []
-
-    for i in range(0, len(pmids), batch_size):
-        batch = pmids[i : i + batch_size]
-        xml_data = efetch(
-            batch,
-            rate_limit_delay=config.rate_limit_delay,
-            api_key=config.api_key,
-        )
-
-        # Parse XML into individual article elements.
-        root = ET.fromstring(xml_data)
-        articles = root.findall(".//PubmedArticle")
-        logger.info(
-            "Batch %d-%d: fetched %d articles",
-            i, i + len(batch), len(articles),
-        )
-
-        for article in articles:
-            record = parse_record(article)
-            if record is None:
-                continue
-
-            # Exclude articles without abstracts when configured.
-            if config.require_abstract and not record.abstract:
-                logger.info(
-                    "Excluding PMID %s: missing abstract", record.pmid
-                )
-                continue
-
-            records.append(record)
-
-    logger.info(
-        "Search complete: %d records returned (esearch total: %d)",
-        len(records),
-        total_count,
-    )
-    return records, total_count
 
 
 def multi_search(
     config: SearchConfig,
     run_date: datetime | None = None,
+    preindex_journals: list[str] | None = None,
 ) -> tuple[list[PubmedRecord], int]:
     """Run primary search plus any configured topics, deduplicate.
 
@@ -317,6 +388,12 @@ def multi_search(
 
     When config.mesh_terms is non-empty, a primary search runs first
     (tagged source_topic="primary") for backward compatibility.
+
+    When preindex_journals is provided, a parallel Title/Abstract search
+    runs for each topic (and primary) limited to the given journals.
+    These catch articles before MeSH indexing.  MeSH searches run first
+    so indexed hits take priority during dedup.  Preindex-only hits are
+    tagged with preindex=True.
     """
     all_records: list[PubmedRecord] = []
     seen_pmids: set[str] = set()
@@ -357,9 +434,62 @@ def multi_search(
             topic.name, len(records), new_count,
         )
 
+    # --- Preindex searches (Title/Abstract, journal-limited) ---
+    if preindex_journals:
+        preindex_count = 0
+
+        # Collect all (source_topic, SearchConfig) pairs to run.
+        preindex_targets: list[tuple[str, SearchConfig]] = []
+        if config.mesh_terms:
+            preindex_targets.append(("primary", config))
+        for topic in config.topics:
+            preindex_targets.append((
+                topic.name,
+                SearchConfig(
+                    mesh_terms=topic.mesh_terms,
+                    additional_terms=topic.additional_terms,
+                    date_window_days=config.date_window_days,
+                    retmax=config.retmax,
+                    require_abstract=config.require_abstract,
+                    rate_limit_delay=config.rate_limit_delay,
+                    api_key=config.api_key,
+                ),
+            ))
+
+        for topic_name, topic_cfg in preindex_targets:
+            query = build_preindex_query(topic_cfg, preindex_journals, run_date)
+            logger.info("Running preindex search: %s", topic_name)
+            records, count = _execute_query(
+                query,
+                retmax=topic_cfg.retmax,
+                rate_limit_delay=topic_cfg.rate_limit_delay,
+                api_key=topic_cfg.api_key,
+                require_abstract=topic_cfg.require_abstract,
+            )
+            total += count
+            new_count = 0
+            for r in records:
+                if r.pmid not in seen_pmids:
+                    r.source_topic = topic_name
+                    r.preindex = True
+                    seen_pmids.add(r.pmid)
+                    all_records.append(r)
+                    new_count += 1
+            preindex_count += new_count
+            logger.info(
+                "Preindex '%s': %d results, %d new (after dedup)",
+                topic_name, len(records), new_count,
+            )
+
+        logger.info(
+            "Preindex searches complete: %d new records from %d queries",
+            preindex_count, len(preindex_targets),
+        )
+
     logger.info(
-        "Multi-search complete: %d total records (from %d topics%s)",
+        "Multi-search complete: %d total records (from %d topics%s%s)",
         len(all_records), len(config.topics),
         " + primary" if config.mesh_terms else "",
+        " + preindex" if preindex_journals else "",
     )
     return all_records, total

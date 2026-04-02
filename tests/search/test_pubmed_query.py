@@ -8,7 +8,7 @@ from xml.etree import ElementTree as ET
 import pytest
 
 from src.models import PubmedRecord, SearchConfig
-from src.search.pubmed_query import build_query, parse_record, search
+from src.search.pubmed_query import build_query, build_preindex_query, parse_record, search
 
 
 class TestBuildQuery:
@@ -34,6 +34,45 @@ class TestBuildQuery:
         config = SearchConfig(mesh_terms=["stroke"], date_window_days=14)
         query = build_query(config, run_date=datetime(2026, 3, 23))
         assert "2026/03/09" in query or "2026/03/10" in query or "2026" in query
+
+
+class TestBuildPreindexQuery:
+    def test_uses_title_abstract_field(self):
+        config = SearchConfig(mesh_terms=["atrial fibrillation"])
+        journals = ["the new england journal of medicine"]
+        query = build_preindex_query(config, journals, run_date=datetime(2026, 3, 30))
+        assert "[Title/Abstract]" in query
+        assert "[MeSH Major Topic]" not in query
+
+    def test_includes_journal_filter(self):
+        config = SearchConfig(mesh_terms=["stroke"])
+        journals = ["the new england journal of medicine", "the lancet"]
+        query = build_preindex_query(config, journals, run_date=datetime(2026, 3, 30))
+        assert '"the new england journal of medicine"[Journal]' in query
+        assert '"the lancet"[Journal]' in query
+
+    def test_uses_date_entry(self):
+        config = SearchConfig(mesh_terms=["stroke"], date_window_days=7)
+        journals = ["jama"]
+        query = build_preindex_query(config, journals, run_date=datetime(2026, 3, 30))
+        assert "[Date - Entry]" in query
+
+    def test_includes_additional_terms(self):
+        config = SearchConfig(
+            mesh_terms=["atrial fibrillation"],
+            additional_terms=["left atrial appendage"],
+        )
+        journals = ["jama"]
+        query = build_preindex_query(config, journals, run_date=datetime(2026, 3, 30))
+        assert '"left atrial appendage"[Title/Abstract]' in query
+
+    def test_multiple_mesh_terms_or_joined(self):
+        config = SearchConfig(mesh_terms=["stroke", "brain ischemia"])
+        journals = ["jama"]
+        query = build_preindex_query(config, journals, run_date=datetime(2026, 3, 30))
+        assert '"stroke"[Title/Abstract]' in query
+        assert '"brain ischemia"[Title/Abstract]' in query
+        assert " OR " in query
 
 
 class TestParseRecord:
