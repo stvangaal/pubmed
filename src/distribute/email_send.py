@@ -170,8 +170,14 @@ def build_rejection_report(
     Returns:
         Tuple of (markdown, plain_text) content strings.
     """
-    near_misses = [r for r in below if (r.triage_score or 0.0) >= score_threshold]
-    below_thresh = [r for r in below if (r.triage_score or 0.0) < score_threshold]
+    near_misses = sorted(
+        [r for r in below if (r.triage_score or 0.0) >= score_threshold],
+        key=lambda r: r.preindex,
+    )
+    below_thresh = sorted(
+        [r for r in below if (r.triage_score or 0.0) < score_threshold],
+        key=lambda r: r.preindex,
+    )
 
     md_parts: list[str] = []
     pt_parts: list[str] = []
@@ -199,12 +205,14 @@ def build_rejection_report(
             f"but cut by {max_articles}-article cap\n"
         )
         for r in near_misses:
+            tag = " *(preindex)*" if r.preindex else ""
+            tag_pt = " (preindex)" if r.preindex else ""
             md_parts.append(
-                f"- **{r.title}** ({r.journal}) — Score: {r.triage_score}\n"
+                f"- **{r.title}** ({r.journal}){tag} — Score: {r.triage_score}\n"
                 f"  Rationale: {r.triage_rationale}"
             )
             pt_parts.append(
-                f"- {r.title} ({r.journal}) — Score: {r.triage_score}\n"
+                f"- {r.title} ({r.journal}){tag_pt} — Score: {r.triage_score}\n"
                 f"  Rationale: {r.triage_rationale}"
             )
 
@@ -216,12 +224,14 @@ def build_rejection_report(
             f"\nBelow Threshold ({len(below_thresh)}) — scored < {score_threshold}\n"
         )
         for r in below_thresh:
+            tag = " *(preindex)*" if r.preindex else ""
+            tag_pt = " (preindex)" if r.preindex else ""
             md_parts.append(
-                f"- **{r.title}** ({r.journal}) — Score: {r.triage_score}\n"
+                f"- **{r.title}** ({r.journal}){tag} — Score: {r.triage_score}\n"
                 f"  Rationale: {r.triage_rationale}"
             )
             pt_parts.append(
-                f"- {r.title} ({r.journal}) — Score: {r.triage_score}\n"
+                f"- {r.title} ({r.journal}){tag_pt} — Score: {r.triage_score}\n"
                 f"  Rationale: {r.triage_rationale}"
             )
 

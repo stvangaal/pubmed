@@ -69,6 +69,25 @@ class TestBuildRejectionReport:
         assert "Near-Misses (1)" in md
         assert "Below Threshold" not in md
 
+    def test_preindex_articles_sorted_last_and_labeled(self):
+        indexed = _make_record("1", "Indexed Article", "NEJM", 0.50, "reason")
+        preindex = _make_record("2", "Preindex Article", "Lancet", 0.55, "reason")
+        preindex.preindex = True
+        below = [preindex, indexed]  # preindex first in input
+
+        md, pt = build_rejection_report(below, "Mar 25 – Mar 31, 2026", 0.70, 10)
+
+        # Indexed should appear before preindex in output
+        assert md.index("Indexed Article") < md.index("Preindex Article")
+        # Preindex article should be labeled
+        assert "*(preindex)*" in md
+        assert "(preindex)" in pt
+        # Indexed article should NOT have preindex label
+        assert "Indexed Article" in md
+        idx = md.index("Indexed Article")
+        # Check that preindex label isn't near the indexed article
+        assert "*(preindex)*" not in md[idx:idx + 60]
+
     def test_only_below_threshold(self):
         below = [
             _make_record("1", "Low Score", "BMJ", 0.50, "Not relevant"),
