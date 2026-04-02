@@ -672,7 +672,7 @@ The migration proceeds through five phases:
 4. **Build traceability.** Create the register and `contracts.yaml`. Assign file ownership. Expect iteration between this phase and the next.
 5. **Validate.** Run the full register audit (§4) and health check (see Health Check Procedure below). Resolve all discrepancies. Archive original legacy documents.
 
-This is typically a one-time procedure per project. For the detailed walkthrough including decision guidance, judgment-call heuristics, and common pitfalls, see `docs/reference/migration-guide.md`.
+This is typically a one-time procedure per project. A detailed migration guide with decision guidance, judgment-call heuristics, and common pitfalls is planned for a future release.
 
 ### Implementing a Spec
 

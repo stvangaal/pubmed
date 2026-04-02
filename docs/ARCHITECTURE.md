@@ -185,7 +185,7 @@ Architecture decisions for the current scope deliberately leave room for planned
 | Phase 1 | pubmed-query, rule-filter, llm-triage | Search and filter stages — the data acquisition half of the pipeline |
 | Phase 2 | llm-summarize, digest-build | Summarize and distribute stages — the output half |
 | Phase 3 | blog-publish, email-send | Blog archive on GitHub Pages + automated email delivery via Resend |
-| Phase 4 | domain-config, stroke-migration (disposable) | Multi-domain infrastructure — domain-scoped config packages, `--domain` CLI, schema versioning. Active domains: stroke, neurology |
+| Phase 4 | domain-config, stroke-migration (disposable), neurology-setup | Multi-domain infrastructure — domain-scoped config packages, `--domain` CLI, schema versioning. Active domains: stroke, neurology |
 
 ## Dependency Graph
 
@@ -209,4 +209,5 @@ Phase 3:
 Phase 4:
   10. domain-config (depends on project-infrastructure for config.py and pipeline.py)
   11. stroke-migration [disposable] (depends on domain-config for the target layout)
+  12. neurology-setup (depends on domain-config for the target layout)
 ```

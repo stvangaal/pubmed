@@ -23,23 +23,22 @@
 | rule-filter | Phase 1 | ready | src/filter/__init__.py, src/filter/rule_filter.py, tests/filter/__init__.py, tests/filter/test_rule_filter.py | pubmed-record, filter-config |
 | llm-triage | Phase 1 | ready | src/filter/llm_triage.py, tests/filter/test_llm_triage.py, config/prompts/triage-prompt.md, config/filter-config.yaml | pubmed-record, filter-config |
 | llm-summarize | Phase 2 | ready | src/summarize/__init__.py, src/summarize/llm_summarize.py, src/summarize/parse_summary.py, tests/summarize/__init__.py, tests/summarize/test_llm_summarize.py, tests/summarize/test_parse_summary.py, config/summary-config.yaml, config/prompts/summary-prompt.md | pubmed-record, summary-config |
-| digest-build | Phase 2 | ready | src/distribute/__init__.py, src/distribute/digest_build.py, tests/distribute/__init__.py, tests/distribute/test_digest_build.py, config/distribute-config.yaml | literature-summary, distribute-config, blog-page |
+| digest-build | Phase 2 | in-progress | src/distribute/__init__.py, src/distribute/digest_build.py, tests/distribute/__init__.py, tests/distribute/test_digest_build.py, config/distribute-config.yaml | literature-summary, distribute-config, blog-page |
 | blog-publish | Phase 3 | ready | src/distribute/blog_publish.py, tests/distribute/test_blog_publish.py, config/blog-config.yaml, config/templates/blog-post.md, config/templates/blog-index.md | literature-summary, blog-config |
-| email-send | Phase 3 | ready | src/distribute/email_send.py, tests/distribute/test_email_send.py, config/email-config.yaml | email-digest, email-config |
+| email-send | Phase 3 | in-progress | src/distribute/email_send.py, tests/distribute/test_email_send.py, config/email-config.yaml | email-digest, email-config |
 | project-infrastructure | Phase 0 | draft | src/__init__.py, tests/__init__.py, src/models.py, src/config.py, src/pipeline.py, requirements.txt, .gitignore | — |
-| domain-config | Phase 4 | draft | config/domains/_template/domain.yaml, config/domains/_template/search-config.yaml, config/domains/_template/filter-config.yaml, config/domains/_template/summary-config.yaml, config/domains/_template/distribute-config.yaml, config/domains/_template/blog-config.yaml, config/domains/_template/email-config.yaml, config/domains/_template/prompts/triage-prompt.md, config/domains/_template/prompts/summary-prompt.md, config/domains/CHANGELOG.md, tests/test_domain_config.py | — |
-| stroke-migration | Phase 4 | draft | config/domains/stroke/domain.yaml, config/domains/stroke/search-config.yaml, config/domains/stroke/filter-config.yaml, config/domains/stroke/summary-config.yaml, config/domains/stroke/distribute-config.yaml, config/domains/stroke/blog-config.yaml, config/domains/stroke/email-config.yaml, config/domains/stroke/prompts/triage-prompt.md, config/domains/stroke/prompts/summary-prompt.md | domain-config |
+| domain-config | Phase 4 | implemented | config/domains/_template/domain.yaml, config/domains/_template/search-config.yaml, config/domains/_template/filter-config.yaml, config/domains/_template/summary-config.yaml, config/domains/_template/distribute-config.yaml, config/domains/_template/blog-config.yaml, config/domains/_template/email-config.yaml, config/domains/_template/prompts/triage-prompt.md, config/domains/_template/prompts/summary-prompt.md, config/domains/CHANGELOG.md, tests/test_domain_config.py | — |
+| stroke-migration | Phase 4 | implemented | config/domains/stroke/domain.yaml, config/domains/stroke/search-config.yaml, config/domains/stroke/filter-config.yaml, config/domains/stroke/summary-config.yaml, config/domains/stroke/distribute-config.yaml, config/domains/stroke/blog-config.yaml, config/domains/stroke/email-config.yaml, config/domains/stroke/prompts/triage-prompt.md, config/domains/stroke/prompts/summary-prompt.md | domain-config |
 | neurology-setup | Phase 4 | draft | config/domains/neurology/domain.yaml, config/domains/neurology/search-config.yaml, config/domains/neurology/filter-config.yaml, config/domains/neurology/summary-config.yaml, config/domains/neurology/distribute-config.yaml, config/domains/neurology/blog-config.yaml, config/domains/neurology/email-config.yaml, config/domains/neurology/prompts/triage-prompt.md, config/domains/neurology/prompts/summary-prompt.md | domain-config |
 
 ## Phase Summary
 
-| Phase | Specs (count) | Status |
-|-------|--------------|--------|
-| Phase 0 | 1 | draft |
-| Phase 1 | 3 | ready |
-| Phase 2 | 2 | ready |
-| Phase 3 | 2 | ready |
-| Phase 4 | 3 | draft |
+| Status | Count |
+|--------|-------|
+| draft | 2 |
+| ready | 5 |
+| in-progress | 2 |
+| implemented | 2 |
 
 ## Unowned Code
 <!-- This section should always be empty. If it is not, something
