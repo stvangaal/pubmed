@@ -39,9 +39,9 @@ jobs:
 
       - name: Persist seen-pmids
         run: |
-          if [[ -f "data/domains/${{ matrix.domain }}/seen-pmids.json" ]]; then
-            git add data/domains/${{ matrix.domain }}/seen-pmids.json
-            git diff --cached --quiet || git commit -m "Update seen-pmids for ${{ matrix.domain }} domain [skip ci]"
+          if [[ -f "data/domains/stroke/seen-pmids.json" ]]; then
+            git add data/domains/stroke/seen-pmids.json
+            git diff --cached --quiet || git commit -m "Update seen-pmids for stroke domain [skip ci]"
             git push origin HEAD:${{ github.ref_name }}
           fi
 

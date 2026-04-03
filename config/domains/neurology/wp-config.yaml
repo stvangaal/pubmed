@@ -1,0 +1,12 @@
+# owner: neurology-digest
+# Neurology domain WordPress configuration.
+config_version: 1
+
+# Whether to upload articles to WordPress (set false to skip).
+enabled: true
+
+# WordPress site URL (no trailing slash).
+site_url: "https://h41.566.myftpupload.com"
+
+# Slug of the custom taxonomy registered for clinical topics.
+clinical_topics_taxonomy: "clinical_topics"

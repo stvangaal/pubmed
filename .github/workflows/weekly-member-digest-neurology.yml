@@ -1,9 +1,9 @@
-# owner: wp-publish
-name: Weekly Member Digest — Stroke
+# owner: neurology-digest
+name: Weekly Member Digest — Neurology
 
 on:
   schedule:
-    - cron: '0 18 * * 1'  # Every Monday at 2pm EDT (18:00 UTC), 2h after stroke pipeline
+    - cron: '0 19 * * 1'  # Every Monday at 3pm EDT (19:00 UTC), 2h after neurology pipeline
   workflow_dispatch:  # Manual trigger
 
 jobs:
@@ -23,4 +23,4 @@ jobs:
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           WP_DIGEST_API_SECRET: ${{ secrets.WP_DIGEST_API_SECRET }}
-        run: python3 -m src.distribute.wp_digest --domain stroke
+        run: python3 -m src.distribute.wp_digest --domain neurology
