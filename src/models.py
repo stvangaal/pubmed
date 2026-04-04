@@ -284,6 +284,7 @@ class WordPressConfig:
     env_app_password: str = "WP_APP_PASSWORD"
     env_digest_secret: str = "WP_DIGEST_API_SECRET"
     expected_meta_fields: list[str] = field(default_factory=list)
+    pages: list[str] = field(default_factory=list)
 
 
 @dataclass

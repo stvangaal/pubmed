@@ -6,6 +6,9 @@ on:
     - cron: '0 18 * * 1'  # Every Monday at 2pm EDT (18:00 UTC), 2h after stroke pipeline
   workflow_dispatch:  # Manual trigger
 
+permissions:
+  contents: read
+
 jobs:
   member-digest:
     runs-on: ubuntu-latest

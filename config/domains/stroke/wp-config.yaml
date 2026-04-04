@@ -24,3 +24,12 @@ expected_meta_fields:
   - pub_date
   - source_topic
   - preindex
+
+# Static pages to sync from content/pages/ to WordPress.
+# Each slug resolves via: content/pages/stroke/{slug}.md → content/pages/_defaults/{slug}.md
+pages:
+  - landing
+  - about
+  - disclaimer
+  - privacy-policy
+  - terms-of-use

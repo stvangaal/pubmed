@@ -12,6 +12,9 @@ owns:
   - tests/distribute/conftest.py
   - config/domains/_template/wp-config.yaml
   - config/domains/stroke/wp-config.yaml
+  - config/domains/neurology/wp-config.yaml
+  - wordpress/pubmed-pipeline.php
+  - docs/wordpress-setup.md
   - .github/workflows/weekly-member-digest.yml
   - wordpress/pubmed-pipeline.php
 requires:

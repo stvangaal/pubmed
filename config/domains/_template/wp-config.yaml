@@ -27,3 +27,13 @@ expected_meta_fields:
   - pub_date
   - source_topic
   - preindex
+
+# Static pages to sync from content/pages/ to WordPress.
+# Each slug resolves via: content/pages/<domain>/{slug}.md → content/pages/_defaults/{slug}.md
+# TODO: Uncomment and customize the pages you need.
+# pages:
+#   - landing
+#   - about
+#   - disclaimer
+#   - privacy-policy
+#   - terms-of-use
