@@ -1,0 +1,12 @@
+{
+  "version": "1",
+  "labeled_by": "",
+  "labeled_date": "",
+  "description": "Expert-rated summaries for quality evaluation. PMIDs only — content fetched at runtime.",
+  "rating_guide": {
+    "accuracy": "1-5: How factually accurate is the summary relative to the abstract?",
+    "completeness": "1-5: Are all key findings and methods captured?",
+    "clinical_utility": "1-5: How useful is this summary for a busy clinician?"
+  },
+  "articles": []
+}

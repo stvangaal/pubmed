@@ -33,14 +33,15 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          KIT_API_SECRET: ${{ secrets.KIT_API_SECRET }}
+          WP_STROKE_USERNAME: ${{ secrets.WP_STROKE_USERNAME }}
+          WP_STROKE_APP_PASSWORD: ${{ secrets.WP_STROKE_APP_PASSWORD }}
         run: python3 -m src.pipeline --domain stroke
 
       - name: Persist seen-pmids
         run: |
-          if [[ -f "data/domains/${{ matrix.domain }}/seen-pmids.json" ]]; then
-            git add data/domains/${{ matrix.domain }}/seen-pmids.json
-            git diff --cached --quiet || git commit -m "Update seen-pmids for ${{ matrix.domain }} domain [skip ci]"
+          if [[ -f "data/domains/stroke/seen-pmids.json" ]]; then
+            git add data/domains/stroke/seen-pmids.json
+            git diff --cached --quiet || git commit -m "Update seen-pmids for stroke domain [skip ci]"
             git push origin HEAD:${{ github.ref_name }}
           fi
 

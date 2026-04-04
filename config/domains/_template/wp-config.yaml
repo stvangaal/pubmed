@@ -1,0 +1,39 @@
+# owner: wp-publish
+# Domain-scoped WordPress configuration.
+# Copy to config/domains/<domain>/wp-config.yaml and fill in TODO fields.
+config_version: 1
+
+# Whether to upload articles to WordPress (set false to skip).
+enabled: false
+
+# TODO: WordPress site URL (no trailing slash).
+site_url: "TODO: https://your-site.com"
+
+# Slug of the custom taxonomy registered for clinical topics.
+# Must match the taxonomy registered in your theme's functions.php.
+clinical_topics_taxonomy: "clinical_topics"
+
+# TODO: Environment variable names for this domain's WordPress credentials.
+env_username: "TODO: WP_YOURDOMAIN_USERNAME"
+env_app_password: "TODO: WP_YOURDOMAIN_APP_PASSWORD"
+env_digest_secret: "TODO: WP_YOURDOMAIN_DIGEST_SECRET"
+
+# Meta fields the pipeline plugin should expose via REST API.
+# TODO: Adjust if your plugin registers different fields.
+expected_meta_fields:
+  - pmid
+  - triage_score
+  - journal
+  - pub_date
+  - source_topic
+  - preindex
+
+# Static pages to sync from content/pages/ to WordPress.
+# Each slug resolves via: content/pages/<domain>/{slug}.md → content/pages/_defaults/{slug}.md
+# TODO: Uncomment and customize the pages you need.
+# pages:
+#   - landing
+#   - about
+#   - disclaimer
+#   - privacy-policy
+#   - terms-of-use

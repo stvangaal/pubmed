@@ -1,0 +1,29 @@
+# owner: wp-publish
+name: Weekly Member Digest — Stroke
+
+on:
+  schedule:
+    - cron: '0 18 * * 1'  # Every Monday at 2pm EDT (18:00 UTC), 2h after stroke pipeline
+  workflow_dispatch:  # Manual trigger
+
+permissions:
+  contents: read
+
+jobs:
+  member-digest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Send member digests
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          WP_STROKE_DIGEST_SECRET: ${{ secrets.WP_STROKE_DIGEST_SECRET }}
+        run: python3 -m src.distribute.wp_digest --domain stroke

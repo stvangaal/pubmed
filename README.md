@@ -128,6 +128,50 @@ pubmed/
   .github/workflows/         # GitHub Actions (one workflow per domain)
 ```
 
+## Testing
+
+Requires Python 3.11+. Tests use pytest.
+
+```bash
+# Run all unit tests (default — live tests are deselected automatically)
+pytest
+
+# Run with verbose output
+pytest -v
+```
+
+### Live WordPress connection tests
+
+These tests hit real WordPress sites to verify plugin installation, taxonomy registration, meta fields, authentication, and the members endpoint. They require domain-scoped credentials as environment variables.
+
+```bash
+# Read-only checks against a single domain
+WP_STROKE_USERNAME="admin" WP_STROKE_APP_PASSWORD="xxxx" \
+  pytest -m live -k stroke -v
+
+# Include members endpoint (needs digest secret)
+WP_STROKE_DIGEST_SECRET="your-secret" \
+  pytest -m live -k stroke -v
+
+# Include post create/delete lifecycle test
+pytest -m "live or live_write" -k stroke -v
+
+# All domains
+pytest -m live -v
+```
+
+Credential env var names are declared per domain in `config/domains/<domain>/wp-config.yaml` (e.g., `WP_STROKE_USERNAME`, `WP_NEUROLOGY_APP_PASSWORD`). Tests skip gracefully when credentials are missing.
+
+### Pytest markers
+
+| Marker | What it runs | Default |
+|--------|-------------|---------|
+| *(none)* | Unit tests only | selected |
+| `live` | Read-only WordPress connection checks | deselected |
+| `live_write` | Post create/verify/delete lifecycle | deselected |
+
+Marker configuration is in `pyproject.toml`.
+
 ## How filtering works
 
 The pipeline uses a two-pass hybrid filter to keep the digest high-signal:

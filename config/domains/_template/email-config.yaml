@@ -18,8 +18,3 @@ subject: "TODO: Domain Literature Weekly — {date_range}"
 
 # TODO: Domain owner email — receives troubleshooting report each run (optional).
 owner_email: "TODO: owner@example.com"
-
-# Subscriber source: "yaml" sends via Resend to to_addresses above.
-# "kit" creates a Kit broadcast with per-subscriber topic filtering
-# (requires KIT_API_SECRET env var).
-subscriber_source: yaml
