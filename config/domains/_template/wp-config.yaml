@@ -12,3 +12,13 @@ site_url: "TODO: https://your-site.com"
 # Slug of the custom taxonomy registered for clinical topics.
 # Must match the taxonomy registered in your theme's functions.php.
 clinical_topics_taxonomy: "clinical_topics"
+
+# Static pages to sync from content/pages/ to WordPress.
+# Each slug resolves via: content/pages/<domain>/{slug}.md → content/pages/_defaults/{slug}.md
+# TODO: Uncomment and customize the pages you need.
+# pages:
+#   - landing
+#   - about
+#   - disclaimer
+#   - privacy-policy
+#   - terms-of-use

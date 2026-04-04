@@ -280,6 +280,7 @@ class WordPressConfig:
     enabled: bool = False
     site_url: str = ""
     clinical_topics_taxonomy: str = "clinical_topics"
+    pages: list[str] = field(default_factory=list)
 
 
 @dataclass

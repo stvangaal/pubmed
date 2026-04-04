@@ -16,6 +16,7 @@ output/
 
 # Runtime state (per-installation, not config)
 data/seen-pmids.json
+data/domains/*/wp-pages-state.yaml
 
 # Spike results (development only)
 spikes/*/spike_results*.json

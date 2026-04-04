@@ -1,0 +1,37 @@
+# owner: wp-pages
+name: Sync WordPress Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ["content/pages/**"]
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: "Domain to sync (leave empty for all enabled domains)"
+        required: false
+        type: string
+
+jobs:
+  sync-pages:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        domain: [stroke]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Sync pages to WordPress
+        env:
+          WP_USERNAME: ${{ secrets.WP_USERNAME }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+        run: |
+          domain="${{ github.event.inputs.domain || matrix.domain }}"
+          python3 -m src.distribute.wp_pages --domain "$domain"

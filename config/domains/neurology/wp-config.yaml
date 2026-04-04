@@ -10,3 +10,12 @@ site_url: "https://h41.566.myftpupload.com"
 
 # Slug of the custom taxonomy registered for clinical topics.
 clinical_topics_taxonomy: "clinical_topics"
+
+# Static pages to sync from content/pages/ to WordPress.
+# Each slug resolves via: content/pages/neurology/{slug}.md → content/pages/_defaults/{slug}.md
+pages:
+  - landing
+  - about
+  - disclaimer
+  - privacy-policy
+  - terms-of-use

@@ -22,6 +22,8 @@ Publish weekly digests as a permanent web archive (GitHub Pages), assemble an em
 | blog-publish | Render digest as a Jekyll page, push to `gh-pages` branch, return blog URLs |
 | digest-build | Assemble summaries into email-ready text using configured template, with links pointing to blog pages |
 | email-send | Send the assembled digest to configured recipients via Resend API |
+| wp-publish | Upload articles as WordPress posts with taxonomy and meta fields; member digest system |
+| wp-pages | Sync static website pages (landing, about, disclaimer, privacy, terms) from repo to WordPress |
 
 ## Internal Structure
 
@@ -37,6 +39,7 @@ Three specs in sequence: blog-publish runs first and returns a `BlogPage` with t
 | `blog-page` | writes — Jekyll page committed to `gh-pages` |
 | `email-config` | reads — sender, recipients, subject template, enabled toggle |
 | `email-digest` | writes — markdown and plain-text digest files; reads — for email sending |
+| `wp-config` | reads — site URL, enabled toggle, taxonomy slug, pages list |
 
 ## Decisions
 
