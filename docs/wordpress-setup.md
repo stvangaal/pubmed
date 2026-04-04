@@ -168,13 +168,23 @@ The pipeline uses WordPress Application Passwords to authenticate POST requests.
 
 ## 7. Environment Variables
 
+Each domain has its own WordPress site and credentials. The env var names are declared in the domain's `wp-config.yaml` and follow the pattern `WP_{DOMAIN}_{PURPOSE}`.
+
 Set these in your GitHub Actions secrets:
 
-| Variable | Purpose | Where to get it |
+| Variable pattern | Purpose | Where to get it |
 |----------|---------|-----------------|
-| `WP_USERNAME` | WordPress username for API auth | Your WordPress admin username |
-| `WP_APP_PASSWORD` | Application Password | Generated in step 6 |
-| `WP_DIGEST_API_SECRET` | Shared secret for member endpoint | Must match `WP_DIGEST_API_SECRET` in wp-config.php |
+| `WP_{DOMAIN}_USERNAME` | WordPress username for API auth | Your WordPress admin username |
+| `WP_{DOMAIN}_APP_PASSWORD` | Application Password | Generated in step 6 |
+| `WP_{DOMAIN}_DIGEST_SECRET` | Shared secret for member endpoint | Must match `WP_DIGEST_API_SECRET` in wp-config.php |
+
+Example for the stroke domain:
+
+| Variable | Value |
+|----------|-------|
+| `WP_STROKE_USERNAME` | WordPress admin username for strokeconversations.ca |
+| `WP_STROKE_APP_PASSWORD` | Application Password generated in step 6 |
+| `WP_STROKE_DIGEST_SECRET` | Shared secret matching wp-config.php |
 
 ## 8. Domain Config
 
@@ -185,23 +195,56 @@ config_version: 1
 enabled: true
 site_url: "https://your-site.com"
 clinical_topics_taxonomy: "clinical_topics"
+
+# Environment variable names for this domain's credentials.
+env_username: "WP_YOURDOMAIN_USERNAME"
+env_app_password: "WP_YOURDOMAIN_APP_PASSWORD"
+env_digest_secret: "WP_YOURDOMAIN_DIGEST_SECRET"
+
+# Meta fields the pipeline plugin should expose via REST API.
+expected_meta_fields:
+  - pmid
+  - triage_score
+  - journal
+  - pub_date
+  - source_topic
+  - preindex
 ```
 
 ## 9. Verify Setup
 
-Test the connection locally:
+### Automated Connection Tests
+
+The project includes live connection tests that verify each WordPress site is properly configured:
 
 ```bash
-# Test article upload (requires WP_USERNAME and WP_APP_PASSWORD)
-export WP_USERNAME="admin"
-export WP_APP_PASSWORD="xxxx xxxx xxxx xxxx"
+# Run read-only checks against a specific domain
+WP_STROKE_USERNAME="admin" WP_STROKE_APP_PASSWORD="xxxx xxxx xxxx xxxx" \
+  pytest -m live -k stroke -v
+
+# Include the digest endpoint test
+WP_STROKE_DIGEST_SECRET="your-secret" \
+  pytest -m live -k stroke -v
+
+# Include the post create/delete lifecycle test
+pytest -m "live or live_write" -k stroke -v
+```
+
+The tests check: REST API reachability, taxonomy registration, meta field schema, authentication, members endpoint, and (with `live_write`) post creation and deletion.
+
+### Manual Verification
+
+```bash
+# Test article upload
+export WP_STROKE_USERNAME="admin"
+export WP_STROKE_APP_PASSWORD="xxxx xxxx xxxx xxxx"
 python3 -m src.pipeline --domain stroke --test
 
 # Test member endpoint
 curl -H "X-Digest-Secret: your-secret" https://your-site.com/wp-json/digest/v1/members
 
-# Test member digest (requires RESEND_API_KEY and WP_DIGEST_API_SECRET)
-export WP_DIGEST_API_SECRET="your-secret"
+# Test member digest
+export WP_STROKE_DIGEST_SECRET="your-secret"
 export RESEND_API_KEY="re_xxxxx"
 python3 -m src.distribute.wp_digest --domain stroke --days 7
 ```
