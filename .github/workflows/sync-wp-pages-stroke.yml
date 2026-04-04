@@ -25,6 +25,6 @@ jobs:
 
       - name: Sync pages to WordPress
         env:
-          WP_USERNAME: ${{ secrets.WP_USERNAME }}
-          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          WP_STROKE_USERNAME: ${{ secrets.WP_STROKE_USERNAME }}
+          WP_STROKE_APP_PASSWORD: ${{ secrets.WP_STROKE_APP_PASSWORD }}
         run: python3 -m src.distribute.wp_pages --domain stroke

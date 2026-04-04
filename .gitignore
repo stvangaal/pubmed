@@ -18,6 +18,12 @@ output/
 data/seen-pmids.json
 data/domains/*/wp-pages-state.yaml
 
+# Evaluation cache (fetched PubMed records, not committed)
+data/eval/.cache/
+
+# Evaluation run history (local tracking)
+data/eval/triage-history.jsonl
+
 # Spike results (development only)
 spikes/*/spike_results*.json
 /tmp/

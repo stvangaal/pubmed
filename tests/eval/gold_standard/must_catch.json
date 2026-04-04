@@ -1,0 +1,7 @@
+{
+  "version": "1",
+  "curated_by": "",
+  "curated_date": "",
+  "description": "Must-catch articles — known important publications that the pipeline should always find and score >= 0.70. PMIDs only. Updated quarterly.",
+  "articles": []
+}

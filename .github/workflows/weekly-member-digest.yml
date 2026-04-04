@@ -25,5 +25,5 @@ jobs:
       - name: Send member digests
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          WP_DIGEST_API_SECRET: ${{ secrets.WP_DIGEST_API_SECRET }}
+          WP_STROKE_DIGEST_SECRET: ${{ secrets.WP_STROKE_DIGEST_SECRET }}
         run: python3 -m src.distribute.wp_digest --domain stroke

@@ -128,6 +128,8 @@ class TestSyncPages:
             enabled=True,
             site_url="https://example.com",
             clinical_topics_taxonomy="clinical_topics",
+            env_username="WP_STROKE_USERNAME",
+            env_app_password="WP_STROKE_APP_PASSWORD",
             pages=["landing", "about"],
         )
         defaults.update(overrides)
@@ -171,7 +173,7 @@ class TestSyncPages:
              patch("src.distribute.wp_pages.load_state", return_value={}), \
              patch("src.distribute.wp_pages.save_state") as mock_save, \
              patch("src.distribute.wp_pages.httpx") as mock_httpx, \
-             patch.dict("os.environ", {"WP_USERNAME": "u", "WP_APP_PASSWORD": "p"}):
+             patch.dict("os.environ", {"WP_STROKE_USERNAME": "u", "WP_STROKE_APP_PASSWORD": "p"}):
             result = sync_pages("stroke", config, dry_run=True)
 
         mock_httpx.get.assert_not_called()
@@ -194,7 +196,7 @@ class TestSyncPages:
              patch("src.distribute.wp_pages.load_state", return_value=state), \
              patch("src.distribute.wp_pages.save_state"), \
              patch("src.distribute.wp_pages.httpx") as mock_httpx, \
-             patch.dict("os.environ", {"WP_USERNAME": "u", "WP_APP_PASSWORD": "p"}):
+             patch.dict("os.environ", {"WP_STROKE_USERNAME": "u", "WP_STROKE_APP_PASSWORD": "p"}):
             result = sync_pages("stroke", config)
 
         mock_httpx.get.assert_not_called()
@@ -228,7 +230,7 @@ class TestSyncPages:
         with patch("src.distribute.wp_pages.CONTENT_DIR", tmp_path), \
              patch("src.distribute.wp_pages.load_state", return_value={}), \
              patch("src.distribute.wp_pages.save_state"), \
-             patch.dict("os.environ", {"WP_USERNAME": "u", "WP_APP_PASSWORD": "p"}):
+             patch.dict("os.environ", {"WP_STROKE_USERNAME": "u", "WP_STROKE_APP_PASSWORD": "p"}):
             result = sync_pages("stroke", config)
 
         assert result == {"about": 99}
@@ -260,7 +262,7 @@ class TestSyncPages:
         with patch("src.distribute.wp_pages.CONTENT_DIR", tmp_path), \
              patch("src.distribute.wp_pages.load_state", return_value={}), \
              patch("src.distribute.wp_pages.save_state"), \
-             patch.dict("os.environ", {"WP_USERNAME": "u", "WP_APP_PASSWORD": "p"}):
+             patch.dict("os.environ", {"WP_STROKE_USERNAME": "u", "WP_STROKE_APP_PASSWORD": "p"}):
             result = sync_pages("stroke", config)
 
         assert result == {"about": 55}
@@ -296,7 +298,7 @@ class TestSyncPages:
         with patch("src.distribute.wp_pages.CONTENT_DIR", tmp_path), \
              patch("src.distribute.wp_pages.load_state", return_value={}), \
              patch("src.distribute.wp_pages.save_state"), \
-             patch.dict("os.environ", {"WP_USERNAME": "u", "WP_APP_PASSWORD": "p"}):
+             patch.dict("os.environ", {"WP_STROKE_USERNAME": "u", "WP_STROKE_APP_PASSWORD": "p"}):
             result = sync_pages("stroke", config)
 
         assert result == {"landing": 10}
@@ -330,7 +332,7 @@ class TestSyncPages:
              patch("src.distribute.wp_pages.load_state", return_value={}), \
              patch("src.distribute.wp_pages.save_state"), \
              patch("src.distribute.wp_pages.httpx") as mock_httpx, \
-             patch.dict("os.environ", {"WP_USERNAME": "u", "WP_APP_PASSWORD": "p"}):
+             patch.dict("os.environ", {"WP_STROKE_USERNAME": "u", "WP_STROKE_APP_PASSWORD": "p"}):
             mock_httpx.get.return_value = get_response
             mock_httpx.post.return_value = post_response
             result = sync_pages("stroke", config)

@@ -280,6 +280,10 @@ class WordPressConfig:
     enabled: bool = False
     site_url: str = ""
     clinical_topics_taxonomy: str = "clinical_topics"
+    env_username: str = "WP_USERNAME"
+    env_app_password: str = "WP_APP_PASSWORD"
+    env_digest_secret: str = "WP_DIGEST_API_SECRET"
+    expected_meta_fields: list[str] = field(default_factory=list)
     pages: list[str] = field(default_factory=list)
 
 

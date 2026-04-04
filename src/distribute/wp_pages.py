@@ -252,12 +252,13 @@ def sync_pages(
         logger.info("No pages configured for domain '%s', skipping", domain)
         return {}
 
-    username = os.environ.get("WP_USERNAME")
-    app_password = os.environ.get("WP_APP_PASSWORD")
+    username = os.environ.get(config.env_username)
+    app_password = os.environ.get(config.env_app_password)
 
     if not dry_run and (not username or not app_password):
         logger.warning(
-            "WP_USERNAME or WP_APP_PASSWORD not set, skipping page sync"
+            "%s or %s not set, skipping page sync",
+            config.env_username, config.env_app_password,
         )
         return {}
 

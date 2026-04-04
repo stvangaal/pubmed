@@ -1,0 +1,12 @@
+{
+  "version": "1",
+  "labeled_by": "",
+  "labeled_date": "",
+  "description": "Expert-labeled articles for triage evaluation. PMIDs only — content fetched at runtime.",
+  "label_guide": {
+    "expert_score": "0.00-1.00 using the same rubric as the LLM triage prompt",
+    "expert_label": "include (>= 0.70) or exclude (< 0.70)",
+    "expert_category": "practice-changing | highly-relevant | informative | incremental | low-relevance"
+  },
+  "articles": []
+}
