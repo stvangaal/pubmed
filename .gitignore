@@ -17,6 +17,12 @@ output/
 # Runtime state (per-installation, not config)
 data/seen-pmids.json
 
+# Evaluation cache (fetched PubMed records, not committed)
+data/eval/.cache/
+
+# Evaluation run history (local tracking)
+data/eval/triage-history.jsonl
+
 # Spike results (development only)
 spikes/*/spike_results*.json
 /tmp/

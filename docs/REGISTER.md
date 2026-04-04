@@ -32,12 +32,13 @@
 | domain-config | Phase 4 | implemented | config/domains/_template/domain.yaml, config/domains/_template/search-config.yaml, config/domains/_template/filter-config.yaml, config/domains/_template/summary-config.yaml, config/domains/_template/distribute-config.yaml, config/domains/_template/blog-config.yaml, config/domains/_template/email-config.yaml, config/domains/_template/prompts/triage-prompt.md, config/domains/_template/prompts/summary-prompt.md, config/domains/CHANGELOG.md, tests/test_domain_config.py | — |
 | stroke-migration | Phase 4 | implemented | config/domains/stroke/domain.yaml, config/domains/stroke/search-config.yaml, config/domains/stroke/filter-config.yaml, config/domains/stroke/summary-config.yaml, config/domains/stroke/distribute-config.yaml, config/domains/stroke/blog-config.yaml, config/domains/stroke/email-config.yaml, config/domains/stroke/prompts/triage-prompt.md, config/domains/stroke/prompts/summary-prompt.md | domain-config |
 | neurology-setup | Phase 4 | draft | config/domains/neurology/domain.yaml, config/domains/neurology/search-config.yaml, config/domains/neurology/filter-config.yaml, config/domains/neurology/summary-config.yaml, config/domains/neurology/distribute-config.yaml, config/domains/neurology/blog-config.yaml, config/domains/neurology/email-config.yaml, config/domains/neurology/prompts/triage-prompt.md, config/domains/neurology/prompts/summary-prompt.md | domain-config |
+| ai-evaluation | Phase 5 | draft | tests/eval/__init__.py, tests/eval/conftest.py, tests/eval/pubmed_fetch.py, tests/eval/score_distribution.py, tests/eval/summary_completeness.py, tests/eval/test_triage_gold.py, tests/eval/test_summary_gold.py, tests/eval/test_retest_reliability.py, tests/eval/test_regression.py, tests/eval/eval-workflow.qmd, tests/eval/gold_standard/triage_gold.json, tests/eval/gold_standard/summary_gold.json, tests/eval/gold_standard/must_catch.json, tests/eval/golden_outputs/.gitkeep | pubmed-record, filter-config, summary-config |
 
 ## Phase Summary
 
 | Status | Count |
 |--------|-------|
-| draft | 1 |
+| draft | 2 |
 | ready | 5 |
 | in-progress | 3 |
 | implemented | 2 |
@@ -70,3 +71,6 @@
 9. domain-config (depends on project-infrastructure for config.py and pipeline.py)
 10. stroke-migration [disposable] (depends on domain-config for the target layout)
 11. neurology-setup (depends on domain-config for the target layout)
+
+### Phase 5
+12. ai-evaluation (depends on pubmed-record, filter-config, summary-config)
