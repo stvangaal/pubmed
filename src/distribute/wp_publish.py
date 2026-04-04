@@ -46,9 +46,8 @@ def publish_to_wordpress(
     app_password = os.environ.get(config.env_app_password)
     if not username or not app_password:
         logger.warning(
-            "%s or %s not set, skipping WordPress publish",
-            config.env_username,
-            config.env_app_password,
+            "WordPress credential env vars not set (check wp-config.yaml "
+            "env_username / env_app_password), skipping publish"
         )
         return {}
 
