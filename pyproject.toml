@@ -1,0 +1,6 @@
+[tool.pytest.ini_options]
+markers = [
+    "live: tests that hit a real WordPress site (deselected by default)",
+    "live_write: live tests that create/delete content (deselected by default)",
+]
+addopts = "-m 'not live and not live_write'"

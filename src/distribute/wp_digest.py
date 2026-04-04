@@ -241,7 +241,7 @@ def run():
         logger.info("No recent posts found, nothing to send")
         return
 
-    api_secret = os.environ.get("WP_DIGEST_API_SECRET")
+    api_secret = os.environ.get(wp_config.env_digest_secret)
     members = fetch_members(wp_config.site_url, api_secret)
     if not members:
         logger.info("No members found, nothing to send")
