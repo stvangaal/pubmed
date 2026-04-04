@@ -1,0 +1,613 @@
+---
+title: "AI Evaluation Workflow"
+subtitle: "Triage Scoring & Summarization Quality"
+author: "PubMed Clinical Literature Monitor"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: false
+    theme: cosmo
+    self-contained: true
+execute:
+  echo: true
+  warning: true
+---
+
+## Overview
+
+This notebook guides you through evaluating the AI methods in the pipeline:
+
+1. **Populate** the gold standard dataset with expert labels
+2. **Run** triage scoring against gold articles and measure agreement
+3. **Check** summary quality and structural completeness
+4. **Measure** test-retest reliability of triage scores
+5. **Save** baselines for regression testing
+
+Each section is self-contained — run them in order the first time, then
+re-run individual sections as needed after prompt or model changes.
+
+### Targets
+
+| Metric | Target | Red Flag |
+|---|---|---|
+| Cohen's kappa (binary include/exclude) | >= 0.70 | < 0.50 |
+| Spearman rank correlation | >= 0.75 | < 0.60 |
+| Test-retest std dev per article | <= 0.05 | > 0.10 |
+| Threshold-flip rate | < 10% | > 25% |
+| False negatives (practice-changing) | 0 | Any |
+| Summary parse success rate | >= 95% | < 85% |
+
+### Cost
+
+The full notebook costs ~$0.40 in LLM calls (30 triage + 10 summary +
+100 retest = 140 calls at Sonnet 4.6 pricing).
+
+```{python}
+#| label: setup
+#| code-summary: "Imports and configuration"
+
+import json
+import os
+import sys
+import statistics
+from pathlib import Path
+from datetime import datetime
+
+# Ensure project root is on the path
+PROJECT_ROOT = Path.cwd()
+while not (PROJECT_ROOT / "src").exists() and PROJECT_ROOT != PROJECT_ROOT.parent:
+    PROJECT_ROOT = PROJECT_ROOT.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from tests.eval.pubmed_fetch import fetch_records
+from tests.eval.score_distribution import compute_distribution
+from tests.eval.summary_completeness import check_summary, check_batch
+from tests.eval.test_triage_gold import _cohens_kappa, _spearman, _score_articles
+from tests.eval.test_retest_reliability import _compute_icc
+from tests.eval.test_regression import save_baseline
+from src.filter.llm_triage import _call_llm, _build_user_message
+from src.summarize.llm_summarize import summarize
+from src.models import LLMTriageConfig, LLMUsage, SummaryConfig
+
+import anthropic
+
+# Paths
+GOLD_DIR = PROJECT_ROOT / "tests" / "eval" / "gold_standard"
+TRIAGE_GOLD_PATH = GOLD_DIR / "triage_gold.json"
+SUMMARY_GOLD_PATH = GOLD_DIR / "summary_gold.json"
+
+# Verify API key
+assert os.environ.get("ANTHROPIC_API_KEY"), (
+    "Set ANTHROPIC_API_KEY before running this notebook"
+)
+print(f"Project root: {PROJECT_ROOT}")
+print(f"API key: ...{os.environ['ANTHROPIC_API_KEY'][-4:]}")
+```
+
+---
+
+## 1. Populate Gold Standard Dataset {#populate}
+
+The gold dataset stores **PMIDs and expert labels only** (no abstracts,
+for copyright reasons).  Article content is fetched from PubMed at
+runtime.
+
+### How to label
+
+Use the same rubric as the triage prompt:
+
+| Score | Category | Description |
+|---|---|---|
+| 0.90–1.00 | practice-changing | New RCTs, updated guidelines, definitive meta-analyses |
+| 0.80–0.89 | highly-relevant | Strong evidence, authoritative reviews |
+| 0.70–0.79 | informative | Solid evidence clinicians should know |
+| 0.50–0.69 | incremental | Useful but not urgent |
+| 0.00–0.49 | low-relevance | Not relevant to the domain |
+
+Set `expert_label` to `"include"` for scores >= 0.70, `"exclude"` otherwise.
+
+### Add articles to the gold dataset
+
+Edit this cell to add your labeled PMIDs.  Run the cell to write the
+updated dataset to disk.
+
+```{python}
+#| label: populate-triage
+#| code-summary: "Add expert-labeled articles to triage_gold.json"
+
+# ── Edit this list with your expert labels ──────────────────────────
+# Each entry: {pmid, expert_score, expert_label, expert_category, notes}
+#
+# Aim for ~30 articles stratified across categories:
+#   ~5 practice-changing, ~5 highly-relevant, ~5 informative,
+#   ~10 incremental, ~5 low-relevance
+#
+# Example:
+# new_articles = [
+#     {
+#         "pmid": "38234567",
+#         "expert_score": 0.92,
+#         "expert_label": "include",
+#         "expert_category": "practice-changing",
+#         "notes": "Large RCT showing benefit of thrombectomy in late window"
+#     },
+#     {
+#         "pmid": "38345678",
+#         "expert_score": 0.45,
+#         "expert_label": "exclude",
+#         "expert_category": "low-relevance",
+#         "notes": "Animal model, no clinical translation"
+#     },
+# ]
+
+new_articles = [
+    # ← paste your labeled articles here
+]
+
+# ── Load existing dataset and merge ────────────────────────────────
+with open(TRIAGE_GOLD_PATH) as f:
+    gold = json.load(f)
+
+existing_pmids = {a["pmid"] for a in gold["articles"]}
+added = 0
+for article in new_articles:
+    if article["pmid"] not in existing_pmids:
+        gold["articles"].append(article)
+        existing_pmids.add(article["pmid"])
+        added += 1
+
+gold["labeled_by"] = gold.get("labeled_by") or "SvG"
+gold["labeled_date"] = datetime.now().strftime("%Y-%m-%d")
+
+with open(TRIAGE_GOLD_PATH, "w") as f:
+    json.dump(gold, f, indent=2)
+
+print(f"Added {added} new articles (total: {len(gold['articles'])})")
+
+# Show category distribution
+from collections import Counter
+cats = Counter(a["expert_category"] for a in gold["articles"])
+for cat, count in sorted(cats.items()):
+    print(f"  {cat}: {count}")
+```
+
+```{python}
+#| label: populate-summary
+#| code-summary: "Add expert-rated articles to summary_gold.json"
+
+# ── Edit this list with your summary quality ratings ────────────────
+# Each entry: {pmid, accuracy, completeness, clinical_utility, notes}
+# Ratings are 1-5 (5 = best).  Pick ~10 articles from the triage
+# gold set that scored above threshold.
+#
+# Example:
+# new_summary_articles = [
+#     {
+#         "pmid": "38234567",
+#         "accuracy": 5,
+#         "completeness": 4,
+#         "clinical_utility": 5,
+#         "notes": "Excellent summary, captured key endpoint"
+#     },
+# ]
+
+new_summary_articles = [
+    # ← paste your rated articles here
+]
+
+# ── Load and merge ────────────────────────────────────────────────
+with open(SUMMARY_GOLD_PATH) as f:
+    sgold = json.load(f)
+
+existing_pmids = {a["pmid"] for a in sgold["articles"]}
+added = 0
+for article in new_summary_articles:
+    if article["pmid"] not in existing_pmids:
+        sgold["articles"].append(article)
+        existing_pmids.add(article["pmid"])
+        added += 1
+
+sgold["labeled_by"] = sgold.get("labeled_by") or "SvG"
+sgold["labeled_date"] = datetime.now().strftime("%Y-%m-%d")
+
+with open(SUMMARY_GOLD_PATH, "w") as f:
+    json.dump(sgold, f, indent=2)
+
+print(f"Added {added} summary articles (total: {len(sgold['articles'])})")
+```
+
+---
+
+## 2. Triage Agreement Metrics {#triage}
+
+Fetches gold-standard articles from PubMed, scores them with the LLM,
+and computes agreement with your expert labels.
+
+```{python}
+#| label: triage-eval
+#| code-summary: "Run triage evaluation"
+
+with open(TRIAGE_GOLD_PATH) as f:
+    gold = json.load(f)
+
+articles = gold["articles"]
+if len(articles) < 5:
+    print("⚠ Not enough articles in triage_gold.json — populate Section 1 first.")
+else:
+    pmids = [a["pmid"] for a in articles]
+    print(f"Fetching {len(pmids)} articles from PubMed...")
+    records = fetch_records(pmids)
+    fetched_pmids = {r.pmid for r in records}
+    articles = [a for a in articles if a["pmid"] in fetched_pmids]
+    print(f"Fetched {len(records)} of {len(pmids)}")
+
+    # Score with LLM
+    config = LLMTriageConfig()
+    print(f"Scoring with {config.model}...")
+    llm_scores = _score_articles(records, config)
+
+    # Build parallel arrays
+    expert_scores, llm_score_list = [], []
+    expert_binary, llm_binary = [], []
+
+    for article in articles:
+        pmid = article["pmid"]
+        if pmid not in llm_scores:
+            continue
+        expert_scores.append(article["expert_score"])
+        llm_score_list.append(llm_scores[pmid])
+        expert_binary.append(1 if article["expert_label"] == "include" else 0)
+        llm_binary.append(1 if llm_scores[pmid] >= 0.70 else 0)
+
+    # ── Agreement metrics ──────────────────────────────────────────
+    kappa = _cohens_kappa(expert_binary, llm_binary)
+    rho = _spearman(expert_scores, llm_score_list)
+
+    print(f"\n{'='*50}")
+    print(f"  Articles evaluated:    {len(expert_scores)}")
+    print(f"  Cohen's kappa:         {kappa:.3f}  (target >= 0.70)")
+    print(f"  Spearman rho:          {rho:.3f}  (target >= 0.75)")
+    print(f"{'='*50}")
+
+    # ── Per-article comparison ─────────────────────────────────────
+    print(f"\n{'PMID':<12} {'Expert':>7} {'LLM':>6} {'Diff':>6} {'Category'}")
+    print("-" * 55)
+    for article in sorted(articles, key=lambda a: a["expert_score"], reverse=True):
+        pmid = article["pmid"]
+        if pmid not in llm_scores:
+            continue
+        es = article["expert_score"]
+        ls = llm_scores[pmid]
+        diff = ls - es
+        cat = article.get("expert_category", "")
+        flag = " ← FALSE NEG" if cat == "practice-changing" and ls < 0.70 else ""
+        print(f"{pmid:<12} {es:>7.2f} {ls:>6.2f} {diff:>+6.2f}  {cat}{flag}")
+
+    # ── False negatives ────────────────────────────────────────────
+    false_negs = [
+        a for a in articles
+        if a.get("expert_category") == "practice-changing"
+        and a["pmid"] in llm_scores
+        and llm_scores[a["pmid"]] < 0.70
+    ]
+    if false_negs:
+        print(f"\n!! {len(false_negs)} PRACTICE-CHANGING ARTICLES MISSED !!")
+    else:
+        print(f"\nNo false negatives on practice-changing articles.")
+```
+
+---
+
+## 3. Score Distribution {#distribution}
+
+Analyze the distribution of triage scores from the gold evaluation run.
+
+```{python}
+#| label: score-dist
+#| code-summary: "Score distribution analysis"
+
+# Uses scores from the triage eval above
+if 'llm_score_list' in dir() and llm_score_list:
+    dist = compute_distribution(llm_score_list, threshold=0.70)
+
+    print(f"Count:            {dist['count']}")
+    print(f"Mean:             {dist['mean']:.3f}")
+    print(f"Median:           {dist['median']:.3f}")
+    print(f"Std dev:          {dist['stdev']:.3f}")
+    print(f"Above threshold:  {dist['above_threshold']}")
+    print(f"Below threshold:  {dist['below_threshold']}")
+    print(f"\nTier breakdown:")
+    for tier, count in dist["tiers"].items():
+        bar = "#" * count
+        print(f"  {tier:>10}: {count:>3}  {bar}")
+else:
+    print("Run Section 2 first to generate scores.")
+```
+
+---
+
+## 4. Summary Quality {#summary}
+
+Run summarization on gold articles and check structural completeness.
+
+```{python}
+#| label: summary-eval
+#| code-summary: "Run summary evaluation"
+
+with open(SUMMARY_GOLD_PATH) as f:
+    sgold = json.load(f)
+
+summary_articles = sgold["articles"]
+if len(summary_articles) < 3:
+    print("⚠ Not enough articles in summary_gold.json — populate Section 1 first.")
+else:
+    pmids = [a["pmid"] for a in summary_articles]
+    print(f"Fetching {len(pmids)} articles from PubMed...")
+    records = fetch_records(pmids)
+
+    # Prepare records as if they passed triage
+    for r in records:
+        r.status = "filtered"
+        r.triage_score = 0.85
+        r.triage_rationale = "Gold standard test article"
+
+    # Load summary prompt
+    prompt_path = PROJECT_ROOT / "config" / "prompts" / "summary-prompt.md"
+    with open(prompt_path) as f:
+        prompt_template = f.read()
+
+    config = SummaryConfig(prompt_template=prompt_template)
+    print(f"Summarizing {len(records)} articles with {config.model}...")
+    summaries, usage = summarize(records, config)
+
+    print(f"\nParse success: {len(summaries)}/{len(records)} ({len(summaries)/len(records):.0%})")
+    print(f"LLM cost: ${usage.estimated_cost:.4f}")
+
+    # ── Completeness check ─────────────────────────────────────────
+    summary_dicts = [
+        {
+            "pmid": s.pmid, "tags": s.tags, "citation": s.citation,
+            "research_question": s.research_question,
+            "key_finding": s.key_finding, "design": s.design,
+            "primary_outcome": s.primary_outcome,
+            "limitations": s.limitations,
+            "summary_short": s.summary_short,
+        }
+        for s in summaries
+    ]
+    batch_result = check_batch(summary_dicts, config.subdomain_options)
+
+    print(f"\nCompleteness rate:    {batch_result['rate']:.0%}")
+    print(f"Field presence rate:  {batch_result['field_presence_rate']:.0%}")
+    print(f"2-sentence rate:     {batch_result['two_sentence_rate']:.0%}")
+    print(f"Valid citation rate:  {batch_result['valid_citation_rate']:.0%}")
+    print(f"Valid tag rate:       {batch_result['valid_tag_rate']:.0%}")
+
+    if batch_result["issues"]:
+        print(f"\nIssues found:")
+        for issue in batch_result["issues"]:
+            print(f"  PMID {issue['pmid']}: {issue['issue']}")
+
+    # ── Show a sample summary ──────────────────────────────────────
+    if summaries:
+        s = summaries[0]
+        print(f"\n{'='*50}")
+        print(f"Sample summary (PMID {s.pmid}):")
+        print(f"{'='*50}")
+        print(f"Tags: {', '.join(s.tags)}")
+        print(f"Citation: {s.citation}")
+        print(f"Research Q: {s.research_question}")
+        print(f"Key finding: {s.key_finding}")
+        print(f"Design: {s.design}")
+        print(f"Primary outcome: {s.primary_outcome}")
+        print(f"Limitations: {s.limitations}")
+        print(f"Short summary: {s.summary_short}")
+```
+
+---
+
+## 5. Test-Retest Reliability {#retest}
+
+Score the same articles multiple times to measure score stability.
+This section makes **N_RUNS x N_ARTICLES** LLM calls (~$0.25).
+
+```{python}
+#| label: retest
+#| code-summary: "Test-retest reliability (5 runs x 20 articles)"
+
+N_RUNS = 5
+MAX_ARTICLES = 20
+
+with open(TRIAGE_GOLD_PATH) as f:
+    gold = json.load(f)
+
+articles = gold["articles"][:MAX_ARTICLES]
+if len(articles) < 5:
+    print("⚠ Not enough articles — populate Section 1 first.")
+else:
+    pmids = [a["pmid"] for a in articles]
+    records = fetch_records(pmids)
+    print(f"Testing {len(records)} articles x {N_RUNS} runs = {len(records) * N_RUNS} LLM calls")
+
+    config = LLMTriageConfig()
+    prompt_text = open(config.triage_prompt_file).read()
+    system_message = [
+        {"type": "text", "text": prompt_text, "cache_control": {"type": "ephemeral"}}
+    ]
+
+    client = anthropic.Anthropic()
+    usage = LLMUsage(stage="eval-retest", model=config.model)
+
+    # Score each article N_RUNS times
+    all_scores: dict[str, list[float]] = {r.pmid: [] for r in records}
+
+    for run in range(N_RUNS):
+        print(f"  Run {run + 1}/{N_RUNS}...")
+        for record in records:
+            user_content = _build_user_message(record)
+            score, _ = _call_llm(client, config, system_message, user_content, usage)
+            all_scores[record.pmid].append(score)
+
+    # ── Per-article results ────────────────────────────────────────
+    stdevs, flip_rates, means = [], [], []
+
+    print(f"\n{'PMID':<12} {'Mean':>6} {'StDev':>6} {'Min':>5} {'Max':>5} {'Flips':>5}")
+    print("-" * 50)
+
+    for pmid, scores in all_scores.items():
+        mean = statistics.mean(scores)
+        stdev = statistics.stdev(scores) if len(scores) > 1 else 0.0
+        flips = sum(1 for s in scores if (s >= 0.70) != (mean >= 0.70))
+        stdevs.append(stdev)
+        flip_rates.append(flips / len(scores))
+        means.append(mean)
+        print(f"{pmid:<12} {mean:>6.3f} {stdev:>6.3f} {min(scores):>5.2f} {max(scores):>5.2f} {flips:>5d}")
+
+    # ── Aggregate ──────────────────────────────────────────────────
+    mean_stdev = statistics.mean(stdevs)
+    max_stdev = max(stdevs)
+    icc = _compute_icc(all_scores)
+    mean_flip = statistics.mean(flip_rates)
+    borderline = sum(1 for m in means if 0.65 <= m <= 0.75)
+
+    print(f"\n{'='*50}")
+    print(f"  Mean stdev:         {mean_stdev:.4f}  (target <= 0.05)")
+    print(f"  Max stdev:          {max_stdev:.4f}")
+    print(f"  ICC(2,1):           {icc:.3f}  (target >= 0.85)")
+    print(f"  Mean flip rate:     {mean_flip:.1%}  (target < 10%)")
+    print(f"  Borderline (0.65-0.75): {borderline}")
+    print(f"  LLM cost:           ${usage.estimated_cost:.4f}")
+    print(f"{'='*50}")
+
+    if mean_stdev > 0.05:
+        print(f"  !! Stdev above target — consider a review band at 0.65-0.75")
+    if mean_flip > 0.10:
+        print(f"  !! Flip rate above target — borderline articles are unstable")
+```
+
+---
+
+## 6. Save Regression Baseline {#baseline}
+
+Snapshot the current gold-standard scores so future prompt/model changes
+can be tested for regressions.  Only run this after you're satisfied
+with the agreement metrics above.
+
+```{python}
+#| label: save-baseline
+#| code-summary: "Save triage baseline for regression testing"
+#| eval: false
+
+# Only run this cell manually when you want to create/update a baseline.
+# It uses llm_scores from Section 2.
+
+if 'llm_scores' in dir() and llm_scores:
+    # Identify practice-changing PMIDs for regression protection
+    with open(TRIAGE_GOLD_PATH) as f:
+        gold = json.load(f)
+
+    practice_changing = [
+        a["pmid"] for a in gold["articles"]
+        if a.get("expert_category") == "practice-changing"
+    ]
+
+    path = save_baseline(
+        scores=llm_scores,
+        practice_changing_pmids=practice_changing,
+    )
+    print(f"Baseline saved to: {path}")
+    print(f"  Articles: {len(llm_scores)}")
+    print(f"  Practice-changing PMIDs protected: {len(practice_changing)}")
+    print(f"\nFuture regression tests will compare against this baseline.")
+else:
+    print("Run Section 2 first to generate scores.")
+```
+
+---
+
+## 7. Regression Check {#regression}
+
+Compare current scores against the saved baseline.  Run this after
+changing prompts or upgrading the model.
+
+```{python}
+#| label: regression-check
+#| code-summary: "Check for regressions vs baseline"
+#| eval: false
+
+from tests.eval.test_regression import _latest_baseline
+
+baseline_path = _latest_baseline()
+if baseline_path is None:
+    print("No baseline found. Run Section 6 first.")
+else:
+    with open(baseline_path) as f:
+        baseline = json.load(f)
+
+    baseline_scores = baseline["scores"]
+    pmids = list(baseline_scores.keys())
+
+    print(f"Baseline: {baseline_path.name} ({len(pmids)} articles)")
+    print(f"Fetching articles from PubMed...")
+    records = fetch_records(pmids)
+    fetched_pmids = {r.pmid for r in records}
+    pmids = [p for p in pmids if p in fetched_pmids]
+
+    config = LLMTriageConfig()
+    print(f"Scoring with {config.model}...")
+    current_scores = _score_articles(records, config)
+
+    # Compare
+    baseline_list, current_list = [], []
+    for pmid in pmids:
+        if pmid in current_scores:
+            baseline_list.append(baseline_scores[pmid])
+            current_list.append(current_scores[pmid])
+
+    rho = _spearman(baseline_list, current_list)
+    diffs = [abs(b - c) for b, c in zip(baseline_list, current_list)]
+    mad = sum(diffs) / len(diffs) if diffs else 0.0
+
+    # Practice-changing drops
+    pc_pmids = baseline.get("practice_changing_pmids", [])
+    dropped = [
+        p for p in pc_pmids
+        if p in current_scores and current_scores[p] < 0.80
+    ]
+
+    print(f"\n{'='*50}")
+    print(f"  Spearman vs baseline:  {rho:.3f}  (target >= 0.80)")
+    print(f"  Mean abs difference:   {mad:.3f}  (target <= 0.10)")
+    print(f"  Practice-changing drops: {len(dropped)}")
+    print(f"{'='*50}")
+
+    if dropped:
+        print(f"\n!! Practice-changing articles dropped below 0.80:")
+        for pmid in dropped:
+            print(f"  PMID {pmid}: baseline={baseline_scores[pmid]:.2f}, current={current_scores[pmid]:.2f}")
+
+    if rho >= 0.80 and mad <= 0.10 and not dropped:
+        print(f"\nNo regression detected.")
+    else:
+        print(f"\n!! Potential regression — review prompt changes.")
+```
+
+---
+
+## Appendix: Running as pytest
+
+These evaluations can also be run as pytest tests (e.g., in CI):
+
+```bash
+# All eval tests (skips if no API key or no gold data)
+pytest tests/eval/ -m eval -v
+
+# Regression tests only (trigger on prompt changes)
+pytest tests/eval/ -m regression -v
+
+# Costly tests (retest reliability — 100+ LLM calls)
+pytest tests/eval/ -m eval_costly -v
+```
