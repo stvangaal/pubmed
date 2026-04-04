@@ -6,6 +6,9 @@ on:
     - cron: '0 19 * * 1'  # Every Monday at 3pm EDT (19:00 UTC), 2h after neurology pipeline
   workflow_dispatch:  # Manual trigger
 
+permissions:
+  contents: read
+
 jobs:
   member-digest:
     runs-on: ubuntu-latest
