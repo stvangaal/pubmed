@@ -1,23 +1,15 @@
 # owner: wp-pages
-name: Sync WordPress Pages
+name: Sync WordPress Pages — Stroke
 
 on:
   push:
     branches: [main]
-    paths: ["content/pages/**"]
-  workflow_dispatch:
-    inputs:
-      domain:
-        description: "Domain to sync (leave empty for all enabled domains)"
-        required: false
-        type: string
+    paths: ["content/pages/_defaults/**", "content/pages/stroke/**"]
+  workflow_dispatch:  # Manual trigger
 
 jobs:
   sync-pages:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        domain: [stroke, neurology]
     steps:
       - uses: actions/checkout@v5
 
@@ -32,6 +24,4 @@ jobs:
         env:
           WP_USERNAME: ${{ secrets.WP_USERNAME }}
           WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
-        run: |
-          domain="${{ github.event.inputs.domain || matrix.domain }}"
-          python3 -m src.distribute.wp_pages --domain "$domain"
+        run: python3 -m src.distribute.wp_pages --domain stroke

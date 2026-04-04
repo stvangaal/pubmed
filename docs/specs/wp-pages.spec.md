@@ -10,7 +10,8 @@ owns:
   - content/pages/_defaults/disclaimer.md
   - content/pages/_defaults/about.md
   - content/pages/_defaults/landing.md
-  - .github/workflows/sync-wp-pages.yml
+  - .github/workflows/sync-wp-pages-stroke.yml
+  - .github/workflows/sync-wp-pages-neurology.yml
 requires:
   - name: wp-config
     version: v0
@@ -155,16 +156,16 @@ python -m src.distribute.wp_pages --domain stroke --dry-run
 
 ### GitHub Actions
 
-A separate workflow triggers on pushes that modify `content/pages/**`:
+Each domain has its own workflow file (consistent with the one-workflow-per-domain convention used by `weekly-digest-*.yml`). Each triggers on pushes to `_defaults/` and its own domain directory:
 
 ```yaml
 on:
   push:
     branches: [main]
-    paths: ["content/pages/**"]
+    paths: ["content/pages/_defaults/**", "content/pages/{domain}/**"]
 ```
 
-It runs `python -m src.distribute.wp_pages --domain <domain>` for each domain with `wp.enabled: true`.
+A change to `_defaults/` triggers all domain workflows (the page may be inherited). A change to a domain directory triggers only that domain's workflow.
 
 ### Error Handling
 
