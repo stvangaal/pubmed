@@ -7,7 +7,7 @@ Each LiteratureSummary becomes a WordPress post with:
 - Custom meta fields (PMID, triage score, journal, pub date, etc.)
 
 Authentication uses WordPress Application Passwords via environment
-variables WP_USERNAME and WP_APP_PASSWORD.
+variables named in the domain's wp-config.yaml (env_username / env_app_password).
 """
 
 import base64
@@ -42,11 +42,13 @@ def publish_to_wordpress(
         logger.warning("WordPress site_url not configured, skipping")
         return {}
 
-    username = os.environ.get("WP_USERNAME")
-    app_password = os.environ.get("WP_APP_PASSWORD")
+    username = os.environ.get(config.env_username)
+    app_password = os.environ.get(config.env_app_password)
     if not username or not app_password:
         logger.warning(
-            "WP_USERNAME or WP_APP_PASSWORD not set, skipping WordPress publish"
+            "%s or %s not set, skipping WordPress publish",
+            config.env_username,
+            config.env_app_password,
         )
         return {}
 
