@@ -413,18 +413,9 @@ def multi_search(
     seen_pmids: set[str] = set()
     total = 0
 
-    # Primary search (backward compat — runs when top-level mesh_terms set)
-    if config.mesh_terms:
-        primary_records, primary_total = search(config, run_date)
-        total += primary_total
-        for r in primary_records:
-            r.source_topic = "primary"
-            seen_pmids.add(r.pmid)
-        all_records.extend(primary_records)
-
-    # Topic searches
-    for topic in config.topics:
-        topic_config = SearchConfig(
+    def _topic_config(topic: Topic) -> SearchConfig:
+        """Build a SearchConfig for a topic, inheriting parent settings."""
+        return SearchConfig(
             mesh_terms=topic.mesh_terms,
             additional_terms=topic.additional_terms,
             date_window_days=config.date_window_days,
@@ -433,16 +424,32 @@ def multi_search(
             rate_limit_delay=config.rate_limit_delay,
             api_key=config.api_key,
         )
-        logger.info("Running topic search: %s", topic.name)
-        records, count = search(topic_config, run_date)
-        total += count
+
+    def _dedup_append(records: list[PubmedRecord], topic_name: str, preindex: bool = False) -> int:
+        """Deduplicate and append records, returning the count of new records."""
         new_count = 0
         for r in records:
             if r.pmid not in seen_pmids:
-                r.source_topic = topic.name
+                r.source_topic = topic_name
+                r.preindex = preindex
                 seen_pmids.add(r.pmid)
                 all_records.append(r)
                 new_count += 1
+        return new_count
+
+    # Primary search (backward compat — runs when top-level mesh_terms set)
+    if config.mesh_terms:
+        primary_records, primary_total = search(config, run_date)
+        total += primary_total
+        _dedup_append(primary_records, "primary")
+
+    # Topic searches
+    for topic in config.topics:
+        topic_cfg = _topic_config(topic)
+        logger.info("Running topic search: %s", topic.name)
+        records, count = search(topic_cfg, run_date)
+        total += count
+        new_count = _dedup_append(records, topic.name)
         logger.info(
             "Topic '%s': %d results, %d new (after dedup)",
             topic.name, len(records), new_count,
@@ -457,18 +464,7 @@ def multi_search(
         if config.mesh_terms:
             preindex_targets.append(("primary", config))
         for topic in config.topics:
-            preindex_targets.append((
-                topic.name,
-                SearchConfig(
-                    mesh_terms=topic.mesh_terms,
-                    additional_terms=topic.additional_terms,
-                    date_window_days=config.date_window_days,
-                    retmax=config.retmax,
-                    require_abstract=config.require_abstract,
-                    rate_limit_delay=config.rate_limit_delay,
-                    api_key=config.api_key,
-                ),
-            ))
+            preindex_targets.append((topic.name, _topic_config(topic)))
 
         for topic_name, topic_cfg in preindex_targets:
             query = build_preindex_query(topic_cfg, preindex_journals)
@@ -485,14 +481,7 @@ def multi_search(
                 maxdate=maxdate,
             )
             total += count
-            new_count = 0
-            for r in records:
-                if r.pmid not in seen_pmids:
-                    r.source_topic = topic_name
-                    r.preindex = True
-                    seen_pmids.add(r.pmid)
-                    all_records.append(r)
-                    new_count += 1
+            new_count = _dedup_append(records, topic_name, preindex=True)
             preindex_count += new_count
             logger.info(
                 "Preindex '%s': %d results, %d new (after dedup)",

@@ -10,7 +10,7 @@ A weekly automated pipeline that identifies practice-changing clinical publicati
 
 **Users:** Clinicians and researchers who receive domain-specific weekly digests. Domain operators (1-2 per domain) who configure search terms, filter rules, and prompts. Maintainers who manage the pipeline infrastructure.
 
-**External dependencies:** PubMed E-utilities API (search and fetch), an LLM API (filtering triage and summarization), GitHub Pages (blog archive), an SMTP/email service (digest delivery, future), Google Forms (per-article feedback capture).
+**External dependencies:** PubMed E-utilities API (search and fetch), an LLM API (filtering triage and summarization), GitHub Pages (blog archive), Resend API (email delivery), Kit.com API (optional subscriber-filtered broadcasts via Liquid conditionals), Google Forms (per-article feedback capture).
 
 **Autonomy:** Runs weekly via GitHub Actions on a cron schedule. No human intervention required for normal operation.
 
@@ -123,25 +123,19 @@ All config definitions can be **domain-scoped**: when `--domain` is specified, c
 | **EASY TO MISS** | Google Form feedback loop | Each article needs a unique pre-filled URL (`?entry.FIELD_ID=PMID`). Must be part of the summary template, not an afterthought. |
 | **EASY TO MISS** | PubMed API rate limits | 3 req/sec without API key, 10 with. Query syntax for MeSH terms has gotchas (e.g., [MeSH Major Topic] vs [MeSH Terms]). |
 
-## Recommended Spikes
+## Spikes (Completed)
 
-### Spike 1: Summarization quality (HIGH)
+### Spike 1: Summarization quality (HIGH) — DONE
 
-- **What:** Take 10 real PubMed stroke abstracts from the past week. Write 3 prompt variations (structured extract, narrative, hybrid). Run all 30 and evaluate.
-- **Question:** Which prompt structure produces summaries a stroke clinician would find useful?
-- **Success:** Summaries let you immediately tell which papers matter and why, without re-reading the abstract.
+- **Result:** Hybrid prompt (structured extract with narrative key finding) selected. Per-domain prompts stored in `config/domains/{name}/prompts/summary-prompt.md`. See `spikes/summarization/spike_summarize.py` for comparison data.
 
-### Spike 2: Core domain object shape (HIGH)
+### Spike 2: Core domain object shape (HIGH) — DONE
 
-- **What:** Pull 20 PubMed records via E-utilities. Map the raw XML/JSON to the proposed `pubmed-record` schema. Verify all fields needed by downstream stages.
-- **Question:** Does PubMed's API return everything the filter and summarizer need?
-- **Success:** Real records map cleanly to the schema with no missing fields or awkward transformations.
+- **Result:** PubMed E-utilities XML maps cleanly to `PubmedRecord` dataclass. All fields needed by downstream stages are available. Mixed-content titles handled via `itertext()`. See `spikes/search/spike_search.py`.
 
-### Spike 3: Filter calibration (MODERATE)
+### Spike 3: Filter calibration (MODERATE) — DONE
 
-- **What:** Take a week's worth of PubMed stroke results (~200). Manually classify 20 as "practice-changing" or not. Run rule-based filter then LLM triage. Compare.
-- **Question:** Can the two-pass filter hit ~5/week without missing papers you'd hand-pick?
-- **Success:** Filter output matches manual picks with ≤1 false negative.
+- **Result:** Two-pass filter (rule + LLM at 0.70 threshold) achieves ~5-10 articles/week with acceptable precision. Backfill mechanism (`min_articles`, `min_score_floor`) prevents empty digests. See `spikes/filter/spike_filter_v2.py`.
 
 ## Scope Fence
 

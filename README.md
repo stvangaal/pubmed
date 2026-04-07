@@ -85,7 +85,7 @@ python3 -m src.pipeline
 
 1. Copy the template: `cp -r config/domains/_template config/domains/your-domain`
 2. Fill in all `TODO` placeholders in the copied YAML files and prompts
-3. Add your domain to the GitHub Actions matrix in `.github/workflows/weekly-digest.yml`
+3. Create a workflow file: copy `.github/workflows/weekly-digest-stroke.yml` and update the domain name
 
 No source code changes required.
 
@@ -118,13 +118,14 @@ pubmed/
     distribute/              # Stage 4: Blog publish + email digest + troubleshooting report
     models.py                # Shared data models
     config.py                # Domain-aware config loader
+    llm_client.py            # Shared LLM retry logic
     pipeline.py              # Orchestrator (--domain CLI)
   output/                    # Generated digests (gitignored)
   data/                      # Runtime state — seen PMIDs per domain (gitignored)
   docs/                      # Architecture, specs, definitions
     specs/                   # Implementation specifications
     definitions/             # Shared data contracts
-  .github/workflows/         # GitHub Actions (matrix strategy per domain)
+  .github/workflows/         # GitHub Actions (one workflow per domain)
 ```
 
 ## Testing
@@ -185,21 +186,15 @@ Each article in the digest includes a feedback link that pre-fills a Google Form
 
 ## Scheduling
 
-The pipeline runs automatically every Monday at noon ET via GitHub Actions with a matrix strategy that runs each domain in parallel:
+The pipeline runs automatically every Monday at noon ET via GitHub Actions. Each domain has its own workflow file under `.github/workflows/`:
 
-```yaml
-# .github/workflows/weekly-digest.yml (simplified)
-jobs:
-  digest:
-    strategy:
-      matrix:
-        domain: [stroke, neurology]
-      fail-fast: false
-    steps:
-      - run: python3 -m src.pipeline --domain ${{ matrix.domain }}
+```
+.github/workflows/
+  weekly-digest-stroke.yml      # Stroke domain (Monday noon ET)
+  weekly-digest-neurology.yml   # Neurology domain (Monday noon ET)
 ```
 
-To add a new domain to the schedule, add it to the `matrix.domain` list.
+To add a new domain to the schedule, copy an existing workflow file, update the domain name, and adjust the cron schedule if needed.
 
 The pipeline publishes a blog page to GitHub Pages (via the `gh-pages` branch) and produces an email digest with links to the blog. GitHub Pages auto-deploys within ~60 seconds of the push.
 

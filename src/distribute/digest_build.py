@@ -13,7 +13,7 @@ from pathlib import Path
 from src.models import BlogPage, LiteratureSummary, LLMUsage, EmailDigest, DistributeConfig
 
 
-def _group_by_subdomain(
+def group_by_subdomain(
     summaries: list[LiteratureSummary],
 ) -> OrderedDict[str, list[LiteratureSummary]]:
     """Group summaries by subdomain, preserving insertion order."""
@@ -23,12 +23,12 @@ def _group_by_subdomain(
     return groups
 
 
-def _subdomain_label(name: str) -> str:
+def subdomain_label(name: str) -> str:
     """Human-readable label for a subdomain name."""
     return name if name else "General"
 
 
-def _is_narrative_review(summary: LiteratureSummary) -> bool:
+def is_narrative_review(summary: LiteratureSummary) -> bool:
     """True if the article is a narrative review (not systematic/meta-analysis)."""
     types_lower = {t.lower() for t in summary.article_types}
     if "review" not in types_lower:
@@ -38,7 +38,7 @@ def _is_narrative_review(summary: LiteratureSummary) -> bool:
     return True
 
 
-def _sort_summaries(
+def sort_summaries(
     summaries: list[LiteratureSummary], sort_by: str
 ) -> list[LiteratureSummary]:
     """Sort summaries according to the configured strategy.
@@ -59,7 +59,7 @@ def _sort_summaries(
         return sorted(summaries, key=lambda s: s.triage_score, reverse=True)
 
 
-def _render_full_markdown(summary: LiteratureSummary) -> str:
+def render_full_markdown(summary: LiteratureSummary) -> str:
     """Render a full summary in markdown format."""
     return (
         f"**{summary.subdomain}**\n"
@@ -80,7 +80,7 @@ def _render_full_markdown(summary: LiteratureSummary) -> str:
     )
 
 
-def _render_full_plain(summary: LiteratureSummary) -> str:
+def render_full_plain(summary: LiteratureSummary) -> str:
     """Render a full summary in plain-text format."""
     pubmed_url = f"https://pubmed.ncbi.nlm.nih.gov/{summary.pmid}/"
     return (
@@ -102,7 +102,7 @@ def _render_full_plain(summary: LiteratureSummary) -> str:
     )
 
 
-def _render_short_markdown(
+def render_short_markdown(
     summary: LiteratureSummary, blog_url: str | None
 ) -> str:
     """Render a short teaser summary in markdown format."""
@@ -119,7 +119,7 @@ def _render_short_markdown(
     )
 
 
-def _render_short_plain(
+def render_short_plain(
     summary: LiteratureSummary, blog_url: str | None
 ) -> str:
     """Render a short teaser summary in plain-text format."""
@@ -168,10 +168,10 @@ def build_digest(
         plain_body = empty_message
         summary_texts: list[str] = []
     else:
-        sorted_summaries = _sort_summaries(summaries, config.sort_by)
+        sorted_summaries = sort_summaries(summaries, config.sort_by)
 
         # --- Group by subdomain ---
-        topic_groups = _group_by_subdomain(sorted_summaries)
+        topic_groups = group_by_subdomain(sorted_summaries)
         has_topics = len(topic_groups) > 1 or (
             len(topic_groups) == 1 and next(iter(topic_groups)) != ""
         )
@@ -180,7 +180,7 @@ def build_digest(
         if has_topics:
             toc_lines = []
             for topic_name, group in topic_groups.items():
-                label = _subdomain_label(topic_name)
+                label = subdomain_label(topic_name)
                 toc_lines.append(f"**{label}**")
                 for s in group:
                     toc_lines.append(f"- {s.title}")
@@ -196,26 +196,26 @@ def build_digest(
 
         for topic_name, group in topic_groups.items():
             if has_topics:
-                label = _subdomain_label(topic_name)
+                label = subdomain_label(topic_name)
                 md_parts.append(f"## {label}\n")
                 pt_parts.append(f"=== {label} ===\n")
 
             for s in group:
                 is_full = (
                     s.triage_score >= config.full_summary_threshold
-                    and not _is_narrative_review(s)
+                    and not is_narrative_review(s)
                 )
                 if is_full:
-                    md_parts.append(_render_full_markdown(s))
-                    pt_parts.append(_render_full_plain(s))
+                    md_parts.append(render_full_markdown(s))
+                    pt_parts.append(render_full_plain(s))
                 else:
                     blog_url = (
                         blog_page.article_urls.get(s.pmid)
                         if blog_page
                         else None
                     )
-                    md_parts.append(_render_short_markdown(s, blog_url))
-                    pt_parts.append(_render_short_plain(s, blog_url))
+                    md_parts.append(render_short_markdown(s, blog_url))
+                    pt_parts.append(render_short_plain(s, blog_url))
 
         markdown_body = md_toc + "\n\n---\n\n" + "\n\n".join(md_parts)
         plain_body = pt_toc + "\n\n---\n\n" + "\n\n".join(pt_parts)
