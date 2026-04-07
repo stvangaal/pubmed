@@ -19,7 +19,7 @@ import httpx
 import resend
 
 from src.config import load_wp_config, load_email_config
-from src.distribute.email_send import _markdown_to_html
+from src.distribute.email_send import markdown_to_html
 from src.distribute.wp_members import Member, fetch_members
 
 logging.basicConfig(
@@ -148,7 +148,7 @@ def build_member_digest(
     )
 
     markdown = "\n".join(md_parts)
-    html = _markdown_to_html(markdown)
+    html = markdown_to_html(markdown)
     return html, markdown
 
 

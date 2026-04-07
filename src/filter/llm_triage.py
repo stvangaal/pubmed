@@ -12,6 +12,7 @@ import os
 
 import anthropic
 
+from src.llm_client import call_llm_with_retry
 from src.models import LLMTriageConfig, LLMUsage, PubmedRecord
 
 logger = logging.getLogger(__name__)
@@ -207,34 +208,8 @@ def _call_llm(
         "messages": [{"role": "user", "content": user_content}],
     }
 
-    # Attempt the call (with one retry on failure)
-    raw_text = _call_with_retry(client, kwargs, usage_tracker)
-
-    # Parse the JSON response
+    raw_text = call_llm_with_retry(client, kwargs, usage_tracker) or ""
     return _parse_response(raw_text)
-
-
-def _call_with_retry(
-    client: anthropic.Anthropic,
-    kwargs: dict,
-    usage_tracker: LLMUsage | None = None,
-) -> str:
-    """Call client.messages.create; retry once on failure."""
-    try:
-        response = client.messages.create(**kwargs)
-        if usage_tracker:
-            usage_tracker.add_response(response.usage)
-        return response.content[0].text.strip()
-    except Exception as e:
-        logger.warning("LLM call failed, retrying once: %s", e)
-        try:
-            response = client.messages.create(**kwargs)
-            if usage_tracker:
-                usage_tracker.add_response(response.usage)
-            return response.content[0].text.strip()
-        except Exception as retry_err:
-            logger.error("LLM retry failed: %s", retry_err)
-            return ""
 
 
 def _parse_response(raw_text: str) -> tuple[float, str]:
