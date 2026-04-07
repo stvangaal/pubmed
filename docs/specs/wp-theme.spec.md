@@ -7,8 +7,8 @@ owns:
   - wordpress/theme/functions.php
   - wordpress/theme/templates/page-weekly-archive.php
   - wordpress/theme/templates/page-taxonomy-browse.php
-  - wordpress/theme/templates/taxonomy.php
-  - wordpress/theme/templates/single.php
+  - wordpress/theme/taxonomy.php
+  - wordpress/theme/single.php
   - wordpress/theme/css/archive-styles.css
 requires:
   - name: wp-config
@@ -109,14 +109,16 @@ All files live in the repository under `wordpress/theme/` and are deployed to `w
 wordpress/theme/
   style.css                            # Child theme declaration (Template: generatepress)
   functions.php                        # Register page templates, display custom taxonomies on posts, enqueue styles
+  taxonomy.php                         # Customized taxonomy archive — must be in theme root (WP template hierarchy)
+  single.php                           # Single post with taxonomy tags — must be in theme root (WP template hierarchy)
   templates/
-    page-weekly-archive.php            # Weekly digest index + detail view
-    page-taxonomy-browse.php           # Combined clinical topics + conditions tag cloud
-    taxonomy.php                       # Customized taxonomy archive (paginated post list)
-    single.php                         # Single post with taxonomy tags
+    page-weekly-archive.php            # Weekly digest index + detail view (page template — subdirectory OK)
+    page-taxonomy-browse.php           # Combined clinical topics + conditions tag cloud (page template — subdirectory OK)
   css/
     archive-styles.css                 # Minimal custom styles for archive views
 ```
+
+> **Note:** WordPress's template hierarchy only discovers `taxonomy.php` and `single.php` in the theme root. Page templates (with `Template Name:` headers) can live in subdirectories since WordPress 4.7.
 
 ### Weekly Digest Archive
 
