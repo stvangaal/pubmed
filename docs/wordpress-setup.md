@@ -52,22 +52,47 @@ Member Digest Script (GitHub Actions) ──GET──> members + posts
 3. Save the form
 4. Optionally add the same field to the **Profile** form so members can update preferences later
 
-## 3. Register Custom Taxonomy
+### Whitelist Public Pages
 
-Add to your theme's `functions.php` or create a micro-plugin:
+Ultimate Member restricts page access to logged-in users by default. Static informational pages must be whitelisted so they remain publicly accessible:
+
+1. Go to **Ultimate Member > Settings > Access**
+2. Add the following page slugs to the whitelist:
+   - `about`
+   - `disclaimer`
+   - `privacy-policy`
+   - `terms-of-use`
+   - The landing/front page (if not already excluded)
+3. Verify by visiting each page in an incognito window — they should load without redirecting to login
+
+## 3. Register Custom Taxonomies
+
+The pipeline uses two taxonomies. Add both to your theme's `functions.php` or use the `pubmed-pipeline.php` micro-plugin:
+
+**Clinical Topics** — broad subscription categories (members subscribe to these):
 
 ```php
-<?php
-/**
- * Register Clinical Topics taxonomy for article posts.
- */
 add_action('init', function () {
     register_taxonomy('clinical_topics', 'post', [
         'label'        => 'Clinical Topics',
         'public'       => true,
         'hierarchical' => false,
-        'show_in_rest' => true,  // Required for REST API access
+        'show_in_rest' => true,
         'rest_base'    => 'clinical_topics',
+    ]);
+});
+```
+
+**Conditions** — narrow clinical conditions for browsing (e.g., atrial-fibrillation, carotid-stenosis):
+
+```php
+add_action('init', function () {
+    register_taxonomy('conditions', 'post', [
+        'label'        => 'Conditions',
+        'public'       => true,
+        'hierarchical' => false,
+        'show_in_rest' => true,
+        'rest_base'    => 'conditions',
     ]);
 });
 ```

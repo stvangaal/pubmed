@@ -10,6 +10,7 @@ owns:
   - content/pages/_defaults/disclaimer.md
   - content/pages/_defaults/about.md
   - content/pages/_defaults/landing.md
+  - content/pages/_defaults/archive.md
   - .github/workflows/sync-wp-pages-stroke.yml
   - .github/workflows/sync-wp-pages-neurology.yml
 requires:
@@ -178,6 +179,7 @@ A change to `_defaults/` triggers all domain workflows (the page may be inherite
 
 | ID | Decision | Alternatives Considered | Rationale | Date |
 |----|----------|------------------------|-----------|------|
+| WPG8 | Whitelist public pages in Ultimate Member access control | Make all pages public; use a different membership plugin | UM restricts non-logged-in users by default. Static informational pages (about, disclaimer, privacy-policy, terms-of-use) must be added to UM's whitelist so they remain publicly accessible. This is a manual WP admin step per domain. | 2026-04-04 |
 | WPG1 | Markdown-in-repo with WP REST API sync | Git deploy to WordPress; theme templates; manual upload | Consistent with existing `wp_publish.py` pattern. Git-tracked, PR-reviewable. Works on any WP host including GoDaddy managed. | 2026-04-04 |
 | WPG2 | Upsert semantics (create-or-update by slug) | Always create; delete-and-recreate | Pages are long-lived resources. Upsert preserves WordPress page IDs, comments, and SEO. | 2026-04-04 |
 | WPG3 | SHA-based skip for unchanged content | Always push; timestamp comparison | SHA is deterministic and immune to clock skew. Avoids unnecessary API calls. | 2026-04-04 |

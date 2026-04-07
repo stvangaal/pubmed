@@ -62,9 +62,20 @@ def publish_to_wordpress(
         api_base, auth_header, config.clinical_topics_taxonomy, all_tags
     )
 
+    # Resolve conditions taxonomy terms (narrow clinical topics from search config)
+    condition_tags = {
+        s.source_topic for s in summaries
+        if s.source_topic and s.source_topic != "primary"
+    }
+    condition_map: dict[str, int] = {}
+    if condition_tags and config.conditions_taxonomy:
+        condition_map = _resolve_taxonomy_terms(
+            api_base, auth_header, config.conditions_taxonomy, condition_tags
+        )
+
     created: dict[str, int] = {}
     for s in summaries:
-        post_id = _create_post(s, api_base, auth_header, config, term_map)
+        post_id = _create_post(s, api_base, auth_header, config, term_map, condition_map)
         if post_id:
             created[s.pmid] = post_id
 
@@ -156,6 +167,7 @@ def _create_post(
     auth_header: str,
     config: WordPressConfig,
     term_map: dict[str, int],
+    condition_map: dict[str, int] | None = None,
 ) -> int | None:
     """Create a single WordPress post for an article summary.
 
@@ -167,7 +179,7 @@ def _create_post(
     post_data: dict = {
         "title": summary.title,
         "content": html,
-        "status": "publish",
+        "status": config.post_status,
         "meta": {
             "pmid": summary.pmid,
             "triage_score": str(summary.triage_score),
@@ -181,6 +193,10 @@ def _create_post(
     # Attach taxonomy terms if any were resolved
     if term_ids:
         post_data[config.clinical_topics_taxonomy] = term_ids
+
+    # Attach conditions taxonomy term (narrow clinical topic)
+    if condition_map and summary.source_topic in condition_map:
+        post_data[config.conditions_taxonomy] = [condition_map[summary.source_topic]]
 
     headers = {
         "Authorization": auth_header,

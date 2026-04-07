@@ -14,7 +14,7 @@ A weekly AI-curated digest of practice-changing stroke publications from PubMed 
 - **Weekly digests** of the most clinically relevant new stroke publications
 - **Structured summaries** — research question, key finding, design, limitations — so you can assess relevance in seconds
 - **Topic filtering** — choose from Acute Treatment, Prevention, Rehabilitation, Hospital Care, Imaging, and Epidemiology
-- **Permanent archive** — browse past digests anytime on this site
+- **[Permanent archive](/archive/)** — browse past digests anytime on this site
 
 ## How to Subscribe
 

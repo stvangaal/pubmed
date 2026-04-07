@@ -15,6 +15,7 @@ owns:
   - config/domains/neurology/wp-config.yaml
   - wordpress/pubmed-pipeline.php
   - docs/wordpress-setup.md
+  - scripts/e2e_wp_test.py
   - .github/workflows/weekly-member-digest.yml
   - wordpress/pubmed-pipeline.php
 requires:
@@ -58,11 +59,13 @@ None — terminal stage. Articles are published as WordPress posts; member diges
 
 2. **Build auth header.** HTTP Basic Auth from the domain's `env_username` and `env_app_password` environment variables.
 
-3. **Resolve taxonomy terms.** Fetch existing terms from `GET /wp-json/wp/v2/{clinical_topics_taxonomy}`. Create any missing terms via POST. Return a name→ID mapping.
+3. **Resolve taxonomy terms.** For each taxonomy (`clinical_topics` and `conditions`): fetch existing terms from `GET /wp-json/wp/v2/{taxonomy}`. Create any missing terms via POST. Return a name→ID mapping.
 
 4. **Create posts.** For each `LiteratureSummary`:
    - Render HTML content (citation, research question, key finding, study design, primary outcome, limitations, feedback link)
-   - POST to `/wp-json/wp/v2/posts` with title, HTML content, `publish` status, taxonomy term IDs, and custom meta fields (pmid, triage_score, journal, pub_date, source_topic, preindex)
+   - Map `summary.tags` → `clinical_topics` term IDs (broad subscription categories, LLM-assigned)
+   - Map `summary.source_topic` → `conditions` term ID (narrow clinical condition from search config). Skip if `source_topic` is `"primary"` (not a specific condition).
+   - POST to `/wp-json/wp/v2/posts` with title, HTML content, `publish` status, both taxonomy term ID lists, and custom meta fields (pmid, triage_score, journal, pub_date, source_topic, preindex)
    - Return dict mapping PMID → WordPress post ID
 
 ### Member Querying (`wp_members.py`)
@@ -81,9 +84,12 @@ None — terminal stage. Articles are published as WordPress posts; member diges
 ### WordPress Plugin (`wordpress/pubmed-pipeline.php`)
 
 A micro-plugin installed on each WordPress site that registers:
-- `clinical_topics` custom taxonomy (public, REST-enabled)
+- `clinical_topics` custom taxonomy (public, REST-enabled) — broad subscription categories (e.g., Prevention, Acute Treatment)
+- `conditions` custom taxonomy (public, REST-enabled) — narrow clinical conditions (e.g., atrial-fibrillation, carotid-stenosis)
 - 6 article meta fields exposed via REST API: `pmid`, `triage_score`, `journal`, `pub_date`, `source_topic`, `preindex`
 - Custom REST endpoint `GET /wp-json/digest/v1/members` protected by `WP_DIGEST_API_SECRET` constant
+
+The two taxonomies serve different purposes: `clinical_topics` drives member digest filtering (members subscribe to broad categories). `conditions` enables fine-grained browsing on the site (e.g., `/conditions/atrial-fibrillation/`) without complicating subscription preferences.
 
 ### Domain-Scoped Credentials
 
@@ -107,6 +113,8 @@ Production code reads credentials from these config-driven names, not hardcoded 
 | WP4 | Micro-plugin for taxonomy + meta + endpoint | Theme functions.php; multiple plugins | Single file, easy to version control and deploy. All pipeline requirements in one plugin. | 2026-04-02 |
 | WP5 | Domain-scoped credential env vars | Single shared WP_USERNAME/WP_APP_PASSWORD | Each domain is a separate WordPress site with its own users. Shared credentials would require all sites to use the same admin account. Config-driven names allow independent rotation. | 2026-04-04 |
 | WP6 | Live connection tests with pytest markers | Manual curl verification; no automated testing | Automated verification that each site has the plugin installed, taxonomy registered, meta fields exposed, and auth working. Gated behind `live`/`live_write` markers so they don't run in CI without credentials. | 2026-04-04 |
+| WP7 | Configurable `post_status` field in WordPressConfig | Hardcoded "publish" status | Allows draft-mode publishing for e2e testing without exposing test articles to site visitors. Defaults to "publish" for production. | 2026-04-05 |
+| WP8 | Two-taxonomy model: `clinical_topics` (broad) + `conditions` (narrow) | Single taxonomy for both; tag-based meta field only | Broad categories are LLM-assigned during summarization and drive member digest filtering. Narrow conditions map 1:1 to search config topics and enable fine-grained browsing without complicating subscription preferences. `source_topic="primary"` is excluded from conditions (it means the article was found via the main MeSH search, not a specific condition). | 2026-04-05 |
 
 ## Tests
 
@@ -120,6 +128,8 @@ Production code reads credentials from these config-driven names, not hardcoded 
 - **test_skips_when_no_site_url**: When `site_url` is empty, verify no API calls.
 - **test_skips_when_no_credentials**: When env vars are missing, verify no API calls.
 - **test_creates_posts**: Verify full publish flow with mocked httpx (taxonomy resolution + post creation).
+- **test_creates_posts_with_conditions**: Verify posts include `conditions` taxonomy term IDs when `source_topic` is a specific condition (not `"primary"`).
+- **test_skips_conditions_for_primary**: Verify no `conditions` term is attached when `source_topic` is `"primary"`.
 - **test_fetches_members**: Verify member parsing from JSON response.
 - **test_skips_entries_without_email**: Verify entries with empty email are filtered out.
 - **test_returns_empty_on_failure**: Verify graceful failure returns empty list.
@@ -131,6 +141,7 @@ Gated behind `@pytest.mark.live` (read-only) and `@pytest.mark.live_write` (crea
 
 - **TestWpApiReachable**: REST API root responds 200, `wp/v2` namespace present.
 - **TestClinicalTopicsTaxonomy**: Taxonomy endpoint exists, `rest_base` matches config.
+- **TestConditionsTaxonomy**: Conditions taxonomy endpoint exists, `rest_base` matches config.
 - **TestArticleMetaFields**: Post schema includes all `expected_meta_fields` from config.
 - **TestAuthentication**: Authenticated `/users/me` succeeds; unauthenticated POST returns 401.
 - **TestDigestMembersEndpoint**: Members endpoint returns 200 with valid secret, rejects bad secret, `digest/v1` namespace discoverable.
@@ -141,3 +152,5 @@ Gated behind `@pytest.mark.live` (read-only) and `@pytest.mark.live_write` (crea
 - The WordPress plugin (`wordpress/pubmed-pipeline.php`) must be installed and activated on each domain's WordPress site. See `docs/wordpress-setup.md` for the full setup guide.
 - Live tests auto-discover domains by scanning `config/domains/*/wp-config.yaml` (excluding `_template`). Adding a new domain automatically includes it in the test suite.
 - `pyproject.toml` registers the `live` and `live_write` markers and deselects them by default, so `pytest` only runs unit tests.
+- **End-to-end validation complete** ([#40](https://github.com/stvangaal/pubmed/issues/40)): On 2026-04-05, the e2e test script successfully published 3 draft articles to strokeconversations.ca (posts 52–54) with taxonomy terms, meta fields, and correct HTML rendering. The `scripts/e2e_wp_test.py` script supports `--cleanup` for removing test posts.
+- The `post_status` field in `WordPressConfig` defaults to `"publish"` but can be set to `"draft"` for testing. The e2e test script uses this to create invisible draft posts.

@@ -48,6 +48,6 @@ bin/arboretum bootstrap ~/Projects/my-project
 | `/reflect` | Lightweight learning interview |
 | `/security-review` | Analyze AI-facing code for prompt injection |
 | `/spec-status` | Dashboard of all spec statuses |
-| `/start` | Entry point for new work |
+| `/start` | **Orchestrator** — guides from idea through issue, spec, plan, tests, and code. Detects scale. Cross-session resumption via `.claude/progress/`. |
 | `/sync-contracts` | Regenerate contracts.yaml from specs |
 | `/validate-refs` | Cross-reference validation |
