@@ -22,6 +22,18 @@ add_action('init', function () {
     ]);
 });
 
+// --- Custom taxonomy: conditions (narrow clinical topics) ---
+
+add_action('init', function () {
+    register_taxonomy('conditions', 'post', [
+        'label'        => 'Conditions',
+        'public'       => true,
+        'hierarchical' => false,
+        'show_in_rest' => true,
+        'rest_base'    => 'conditions',
+    ]);
+});
+
 // --- Article meta fields (exposed via REST API) ---
 
 add_action('init', function () {

@@ -24,6 +24,12 @@ data/eval/.cache/
 # Evaluation run history (local tracking)
 data/eval/triage-history.jsonl
 
+# Workflow progress (per-session, cross-session resumption)
+.claude/progress/
+
+# E2E test state (created/deleted test post IDs)
+data/e2e-test/
+
 # Spike results (development only)
 spikes/*/spike_results*.json
 /tmp/

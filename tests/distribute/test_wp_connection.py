@@ -70,6 +70,38 @@ class TestClinicalTopicsTaxonomy:
 
 
 @pytest.mark.live
+class TestConditionsTaxonomy:
+    """Verify the conditions taxonomy is registered and REST-accessible."""
+
+    def test_taxonomy_endpoint_exists(self, wp_config, wp_credentials):
+        skip_if_not_configured(wp_config)
+        if not wp_config.conditions_taxonomy:
+            pytest.skip("conditions_taxonomy not configured")
+        auth = _build_auth_header(*wp_credentials)
+        url = (
+            f"{wp_config.site_url.rstrip('/')}/wp-json/wp/v2"
+            f"/{wp_config.conditions_taxonomy}"
+        )
+        resp = httpx.get(url, headers={"Authorization": auth}, timeout=15)
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+    def test_taxonomy_in_discovery(self, wp_config, wp_credentials):
+        skip_if_not_configured(wp_config)
+        if not wp_config.conditions_taxonomy:
+            pytest.skip("conditions_taxonomy not configured")
+        auth = _build_auth_header(*wp_credentials)
+        url = (
+            f"{wp_config.site_url.rstrip('/')}/wp-json/wp/v2"
+            f"/taxonomies/{wp_config.conditions_taxonomy}"
+        )
+        resp = httpx.get(url, headers={"Authorization": auth}, timeout=15)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data.get("rest_base") == wp_config.conditions_taxonomy
+
+
+@pytest.mark.live
 class TestArticleMetaFields:
     """Verify article meta fields are registered and visible in the REST schema."""
 

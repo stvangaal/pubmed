@@ -21,13 +21,19 @@ enabled: true
 # WordPress site URL (no trailing slash).
 site_url: "https://strokeconversations.ca"
 
-# Slug of the custom taxonomy registered for clinical topics.
+# Slug of the custom taxonomy registered for broad clinical topics (subscription categories).
 clinical_topics_taxonomy: "clinical_topics"
+
+# Slug of the custom taxonomy registered for narrow clinical conditions (browsing).
+conditions_taxonomy: "conditions"
 
 # Environment variable names for this domain's WordPress credentials.
 env_username: "WP_STROKE_USERNAME"
 env_app_password: "WP_STROKE_APP_PASSWORD"
 env_digest_secret: "WP_STROKE_DIGEST_SECRET"
+
+# WordPress post status for published articles ("publish" or "draft").
+post_status: "publish"
 
 # Meta fields the pipeline plugin should expose via REST API.
 expected_meta_fields:
@@ -44,10 +50,12 @@ expected_meta_fields:
 class WordPressConfig:
     enabled: bool                    # Whether to publish articles to WordPress
     site_url: str                    # WordPress site URL (no trailing slash)
-    clinical_topics_taxonomy: str    # Taxonomy slug for clinical topics
+    clinical_topics_taxonomy: str    # Taxonomy slug for broad clinical topics (subscription categories)
+    conditions_taxonomy: str         # Taxonomy slug for narrow clinical conditions (browsing)
     env_username: str                # Env var name for WordPress username
     env_app_password: str            # Env var name for Application Password
     env_digest_secret: str           # Env var name for digest API secret
+    post_status: str                 # WordPress post status for articles ("publish" or "draft")
     expected_meta_fields: list[str]  # Meta fields expected in REST API schema
 ```
 
@@ -79,3 +87,5 @@ Domain-scoped env vars follow the pattern `WP_{DOMAIN}_{PURPOSE}`:
 |------|---------|--------|----------------|
 | 2026-03-30 | v0 | Initial draft — enabled, site_url, clinical_topics_taxonomy | wp-publish |
 | 2026-04-04 | v0 | Added env_username, env_app_password, env_digest_secret, expected_meta_fields for domain-scoped credentials and live tests | wp-publish |
+| 2026-04-04 | v0 | Added post_status for draft-mode publishing during e2e testing | wp-publish |
+| 2026-04-05 | v0 | Added conditions_taxonomy for narrow clinical conditions (two-taxonomy model) | wp-publish |

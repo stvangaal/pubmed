@@ -10,6 +10,7 @@ site_url: "https://h41.566.myftpupload.com"
 
 # Slug of the custom taxonomy registered for clinical topics.
 clinical_topics_taxonomy: "clinical_topics"
+conditions_taxonomy: "conditions"
 
 # Environment variable names for this domain's WordPress credentials.
 env_username: "WP_NEUROLOGY_USERNAME"
@@ -29,6 +30,7 @@ expected_meta_fields:
 # Each slug resolves via: content/pages/neurology/{slug}.md → content/pages/_defaults/{slug}.md
 pages:
   - landing
+  - archive
   - about
   - disclaimer
   - privacy-policy

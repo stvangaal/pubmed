@@ -112,3 +112,90 @@ class TestPublishToWordpress:
             result = publish_to_wordpress([summary], config)
 
         assert result == {"99999": 42}
+
+    @patch("src.distribute.wp_publish.httpx")
+    def test_creates_posts_with_conditions(self, mock_httpx):
+        """Verify posts include conditions taxonomy term when source_topic is a specific condition."""
+        config = WordPressConfig(
+            enabled=True,
+            site_url="https://example.com",
+            clinical_topics_taxonomy="clinical_topics",
+            conditions_taxonomy="conditions",
+        )
+
+        # Track GET calls to return different responses per taxonomy
+        def mock_get(url, **kwargs):
+            resp = MagicMock()
+            resp.raise_for_status = MagicMock()
+            if "conditions" in url and "taxonomies" not in url:
+                resp.json.return_value = [{"id": 10, "name": "atrial-fibrillation"}]
+            else:
+                resp.json.return_value = [{"id": 1, "name": "Acute Treatment"}]
+            return resp
+
+        mock_httpx.get.side_effect = mock_get
+
+        post_response = MagicMock()
+        post_response.json.return_value = {"id": 42}
+        post_response.raise_for_status = MagicMock()
+        mock_httpx.post.return_value = post_response
+
+        summary = _make_summary(
+            pmid="99999",
+            tags=["Acute Treatment"],
+            source_topic="atrial-fibrillation",
+        )
+
+        with patch.dict("os.environ", {"WP_USERNAME": "admin", "WP_APP_PASSWORD": "secret"}):
+            result = publish_to_wordpress([summary], config)
+
+        assert result == {"99999": 42}
+        # Verify the post creation call included conditions taxonomy
+        post_calls = [c for c in mock_httpx.post.call_args_list if "/posts" in str(c)]
+        assert len(post_calls) == 1
+        post_data = post_calls[0].kwargs.get("json", post_calls[0][1].get("json", {})) if post_calls[0].kwargs else {}
+        # The post data should include the conditions taxonomy key
+        assert "conditions" in post_data
+
+    @patch("src.distribute.wp_publish.httpx")
+    def test_skips_conditions_for_primary(self, mock_httpx):
+        """Verify no conditions term is attached when source_topic is 'primary'."""
+        config = WordPressConfig(
+            enabled=True,
+            site_url="https://example.com",
+            clinical_topics_taxonomy="clinical_topics",
+            conditions_taxonomy="conditions",
+        )
+
+        terms_response = MagicMock()
+        terms_response.json.return_value = [{"id": 1, "name": "Acute Treatment"}]
+        terms_response.raise_for_status = MagicMock()
+
+        # Conditions fetch returns empty (no conditions terms needed)
+        conditions_response = MagicMock()
+        conditions_response.json.return_value = []
+        conditions_response.raise_for_status = MagicMock()
+
+        def mock_get(url, **kwargs):
+            if "conditions" in url and "taxonomies" not in url:
+                return conditions_response
+            return terms_response
+
+        mock_httpx.get.side_effect = mock_get
+
+        post_response = MagicMock()
+        post_response.json.return_value = {"id": 42}
+        post_response.raise_for_status = MagicMock()
+        mock_httpx.post.return_value = post_response
+
+        summary = _make_summary(pmid="99999", source_topic="primary")
+
+        with patch.dict("os.environ", {"WP_USERNAME": "admin", "WP_APP_PASSWORD": "secret"}):
+            result = publish_to_wordpress([summary], config)
+
+        assert result == {"99999": 42}
+        # Verify the post creation call did NOT include conditions taxonomy
+        post_calls = [c for c in mock_httpx.post.call_args_list if "/posts" in str(c)]
+        assert len(post_calls) == 1
+        post_data = post_calls[0].kwargs.get("json", post_calls[0][1].get("json", {})) if post_calls[0].kwargs else {}
+        assert "conditions" not in post_data
